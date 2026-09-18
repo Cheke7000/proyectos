@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Portafolio de Ezequiel Ayala — proyectos web con HTML, CSS y JavaScript.">
+  <title>Ezequiel Ayala | Portafolio Web</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:14px;right:14px;z-index:99999;display:inline-block;padding:9px 13px;border-radius:9px;text-decoration:none;color:#fff;background:rgba(5,10,18,.88);border:1px solid rgba(22,131,255,.45);font:600 14px Arial,sans-serif;backdrop-filter:blur(8px);">Mis proyectos →</a>
+
+  <div class="bg-grid"></div>
+  <div class="glow glow-one"></div>
+  <div class="glow glow-two"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#inicio" aria-label="Inicio">EA<span>.</span></a>
+    <nav>
+      <a href="#proyectos">Proyectos</a>
+      <a href="#sobre-mi">Sobre mí</a>
+      <a href="#contacto">Contacto</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <div class="hero-copy">
+        <p class="eyebrow">PORTAFOLIO · 2026</p>
+        <h1>Ezequiel <span>Ayala</span></h1>
+        <p class="intro">
+          Soy nuevo en el mundo del desarrollo web y estoy empezando a convertir
+          lo que aprendo en proyectos reales.
+        </p>
+        <div class="tech-row">
+          <span>HTML</span><span>CSS</span><span>JavaScript</span>
+        </div>
+        <div class="hero-actions">
+          <a class="btn primary" href="#proyectos">Ver proyectos ↓</a>
+          <a class="btn ghost" href="#contacto">Mis redes</a>
+        </div>
+      </div>
+
+      <div class="hero-card">
+        <div class="code-window">
+          <div class="window-bar"><i></i><i></i><i></i><span>ezequiel.js</span></div>
+          <pre><code><span class="c-blue">const</span> <span class="c-white">developer</span> = {
+  name: <span class="c-green">"Ezequiel Ayala"</span>,
+  level: <span class="c-green">"beginner"</span>,
+  skills: [
+    <span class="c-green">"HTML"</span>,
+    <span class="c-green">"CSS"</span>,
+    <span class="c-green">"JavaScript"</span>
+  ],
+  learning: <span class="c-blue">true</span>
+};</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="about section" id="sobre-mi">
+      <p class="eyebrow">01 · SOBRE MÍ</p>
+      <h2>Aprendiendo, creando y<br><span>experimentando.</span></h2>
+      <p>
+        Todavía estoy al comienzo de mi camino como desarrollador web.
+        Recientemente aprendí las bases de HTML, CSS y JavaScript, y este
+        portafolio es una pequeña muestra de lo que puedo hacer con ellas.
+      </p>
+    </section>
+
+    <section class="projects section" id="proyectos">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">02 · PROYECTOS</p>
+          <h2>Esto es un poco de<br><span>lo que puedo hacer.</span></h2>
+        </div>
+        <p class="section-note">Proyectos personales · HTML / CSS / JS</p>
+      </div>
+
+      <div class="project-grid">
+        <article class="project-card solar-card">
+          <div class="project-visual solar-visual">
+            <div class="mini-sun"></div>
+            <div class="orbit orbit-a"><b></b></div>
+            <div class="orbit orbit-b"><b></b></div>
+            <div class="orbit orbit-c"><b></b></div>
+          </div>
+          <div class="project-body">
+            <p class="project-number">01 / 04</p>
+            <h3>Sistema Solar</h3>
+            <p>Una representación 2D animada del sistema solar, con lunas y cinturón de asteroides.</p>
+            <div class="tags"><span>HTML</span><span>CSS</span><span>JS</span></div>
+            <a class="project-link" href="sistema-solar.html">Explorar proyecto <span>↗</span></a>
+          </div>
+        </article>
+
+        <article class="project-card solar3d-card">
+          <div class="project-visual solar3d-visual">
+            <div class="planet3d"></div>
+            <div class="ring3d"></div>
+            <div class="stars3d"></div>
+          </div>
+          <div class="project-body">
+            <p class="project-number">02 / 04</p>
+            <h3>Sistema Solar 3D</h3>
+            <p>Una versión 3D interactiva con planetas, lunas, órbitas y cinturón de asteroides.</p>
+            <div class="tags"><span>Three.js</span><span>JS</span><span>3D</span></div>
+            <a class="project-link" href="sistema-solar-3d.html">Explorar proyecto <span>↗</span></a>
+          </div>
+        </article>
+
+        <article class="project-card love-card">
+          <div class="project-visual love-visual">
+            <div class="heart-big">♥</div>
+            <div class="floating-heart h1">♥</div>
+            <div class="floating-heart h2">♥</div>
+            <div class="floating-heart h3">♥</div>
+          </div>
+          <div class="project-body">
+            <p class="project-number">03 / 04</p>
+            <h3>Propuesta de novios</h3>
+            <p>Una pequeña experiencia interactiva donde el botón “No” intenta escapar de forma aleatoria.</p>
+            <div class="tags"><span>HTML</span><span>CSS</span><span>JS</span></div>
+            <a class="project-link" href="propuesta-novios.html">Ver proyecto <span>↗</span></a>
+          </div>
+        </article>
+
+        <article class="project-card future-card">
+          <div class="project-visual future-visual">
+            <span>+</span>
+          </div>
+          <div class="project-body">
+            <p class="project-number">04 / 04</p>
+            <h3>Próximo proyecto</h3>
+            <p>Este espacio queda reservado para lo siguiente que aprenda y construya.</p>
+            <div class="tags"><span>EN PROCESO</span></div>
+            <span class="project-link muted">Próximamente <span>→</span></span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="contact section" id="contacto">
+      <p class="eyebrow">03 · CONTACTO</p>
+      <h2>¿Quieres ver más de<br><span>lo que estoy creando?</span></h2>
+      <div class="socials">
+        <a href="https://www.instagram.com/cheke_ayala_3" target="_blank" rel="noopener">
+          <small>Instagram</small><strong>@cheke_ayala_3</strong><span>↗</span>
+        </a>
+        <a href="https://www.tiktok.com/@cheke_ayala_7000" target="_blank" rel="noopener">
+          <small>TikTok</small><strong>@cheke_ayala_7000</strong><span>↗</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Ezequiel Ayala</span>
+    <span>Hecho con HTML · CSS · JavaScript</span>
+    <a href="#inicio">Volver arriba ↑</a>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

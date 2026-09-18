@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reloj interactivo</title>
+<style>
+  :root{ --bg-deep:#05060f; --bg-mid:#0d1224; --accent:#7ee8fa; --accent2:#ffd97a; }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin: 0; min-height: 100%;
+    background: radial-gradient(ellipse at 50% 20%, var(--bg-mid), var(--bg-deep) 70%);
+    font-family: 'Trebuchet MS', sans-serif; color: #f0f2ff;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  header{ text-align: center; padding: 40px 20px 10px; }
+  h1{
+    margin: 0 0 6px 0; font-size: clamp(1.5rem, 5vw, 2.2rem);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p{ color: #b7bde0; margin: 0; font-size: .9rem; }
+
+  .mode-toggle{ display: flex; gap: 8px; margin: 18px 0 10px; }
+  .mode-toggle button{
+    border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06);
+    color: #f0f2ff; padding: 8px 18px; border-radius: 50px; cursor: pointer;
+    font-family: inherit; font-size: .85rem; font-weight: bold;
+  }
+  .mode-toggle button.active{
+    background: linear-gradient(135deg, var(--accent), #2f9fbd); color: #05060f;
+  }
+
+  .clock-wrap{ position: relative; width: min(70vw, 300px); margin: 10px auto 6px; touch-action: none; }
+  svg{ width: 100%; height: auto; display: block; user-select: none; }
+
+  .hand{ transform-origin: 150px 150px; cursor: grab; }
+  .hand.dragging{ cursor: grabbing; }
+  .hour-hand{ stroke: var(--accent2); stroke-width: 7; }
+  .minute-hand{ stroke: var(--accent); stroke-width: 4.5; }
+
+  .digital{
+    font-size: 1.6rem; font-weight: bold; color: #f0f2ff; margin: 12px 0 4px;
+    background: rgba(255,255,255,0.06); padding: 6px 20px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .hint{ color: #9aa3cc; font-size: .82rem; text-align: center; max-width: 320px; margin: 4px 0 30px; }
+
+  /* --- Reto --- */
+  .quiz-panel{ display: none; flex-direction: column; align-items: center; margin-bottom: 40px; }
+  .quiz-panel.show{ display: flex; }
+
+  .quiz-question{ color: #dcd3ff; font-weight: bold; margin: 10px 0 16px; text-align: center; }
+
+  .options{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    max-width: 320px; width: 100%; margin-bottom: 14px;
+  }
+  .options button{
+    border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
+    color: #f0f2ff; padding: 12px; border-radius: 12px; cursor: pointer;
+    font-family: inherit; font-size: 1rem; font-weight: bold;
+  }
+  .options button.correct{ background: rgba(76,175,80,0.35); border-color: #4caf50; }
+  .options button.wrong{ background: rgba(230,57,70,0.35); border-color: #e63946; }
+
+  .quiz-status{ min-height: 20px; font-weight: bold; margin-bottom: 8px; }
+  .score{ color: #b7bde0; font-size: .85rem; margin-bottom: 10px; }
+
+  button.next{
+    border: none; border-radius: 50px; padding: 10px 24px;
+    background: linear-gradient(135deg, var(--accent), #2f9fbd);
+    color: #05060f; font-weight: bold; cursor: pointer; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Reloj interactivo</h1>
+  <p>Aprende a leer la hora moviendo las manecillas o poniéndote a prueba</p>
+</header>
+
+<div class="mode-toggle">
+  <button id="modeFree" class="active">Modo libre</button>
+  <button id="modeQuiz">Modo reto</button>
+</div>
+
+<div class="clock-wrap">
+  <svg viewBox="0 0 300 300" id="clockSvg">
+    <circle cx="150" cy="150" r="140" fill="#111a30" stroke="rgba(255,255,255,0.15)" stroke-width="4"/>
+    <g id="ticks"></g>
+    <g id="numbers"></g>
+    <line id="hourHand" class="hand hour-hand" x1="150" y1="150" x2="150" y2="95" stroke-linecap="round"/>
+    <line id="minuteHand" class="hand minute-hand" x1="150" y1="150" x2="150" y2="60" stroke-linecap="round"/>
+    <circle cx="150" cy="150" r="7" fill="#f0f2ff"/>
+  </svg>
+</div>
+
+<div class="digital" id="digital">12:00</div>
+
+<div id="freePanel">
+  <p class="hint">Arrastra la manecilla dorada (horas) o la celeste (minutos) para practicar a leer la hora.</p>
+</div>
+
+<div class="quiz-panel" id="quizPanel">
+  <p class="quiz-question" id="quizQuestion">¿Qué hora muestra el reloj?</p>
+  <div class="options" id="options"></div>
+  <p class="quiz-status" id="quizStatus"></p>
+  <p class="score">Aciertos: <span id="score">0</span> / <span id="total">0</span></p>
+  <button class="next" onclick="newQuestion()">Siguiente reto</button>
+</div>
+
+<script>
+  const svg = document.getElementById('clockSvg');
+  const ticksG = document.getElementById('ticks');
+  const numbersG = document.getElementById('numbers');
+  const hourHand = document.getElementById('hourHand');
+  const minuteHand = document.getElementById('minuteHand');
+  const digital = document.getElementById('digital');
+
+  const modeFreeBtn = document.getElementById('modeFree');
+  const modeQuizBtn = document.getElementById('modeQuiz');
+  const freePanel = document.getElementById('freePanel');
+  const quizPanel = document.getElementById('quizPanel');
+  const optionsEl = document.getElementById('options');
+  const quizStatus = document.getElementById('quizStatus');
+  const quizQuestion = document.getElementById('quizQuestion');
+  const scoreEl = document.getElementById('score');
+  const totalEl = document.getElementById('total');
+
+  let hour = 12, minute = 0;
+  let quizMode = false;
+  let score = 0, total = 0;
+  let answered = false;
+
+  // ---------- Dibujar carátula ----------
+  for (let i = 0; i < 60; i++){
+    const angle = (i * 6) * Math.PI / 180;
+    const isHour = i % 5 === 0;
+    const r1 = isHour ? 118 : 128;
+    const r2 = 136;
+    const x1 = 150 + r1 * Math.sin(angle);
+    const y1 = 150 - r1 * Math.cos(angle);
+    const x2 = 150 + r2 * Math.sin(angle);
+    const y2 = 150 - r2 * Math.cos(angle);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', isHour ? '#f0f2ff' : 'rgba(255,255,255,0.35)');
+    line.setAttribute('stroke-width', isHour ? 3 : 1.5);
+    ticksG.appendChild(line);
+  }
+
+  for (let n = 1; n <= 12; n++){
+    const angle = (n * 30) * Math.PI / 180;
+    const r = 102;
+    const x = 150 + r * Math.sin(angle);
+    const y = 150 - r * Math.cos(angle);
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x); text.setAttribute('y', y + 6);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', '18');
+    text.setAttribute('font-weight', 'bold');
+    text.setAttribute('fill', '#f0f2ff');
+    text.textContent = n;
+    numbersG.appendChild(text);
+  }
+
+  // ---------- Actualizar manecillas y texto ----------
+  function updateClock(){
+    const hourAngle = (hour % 12) * 30 + minute * 0.5;
+    const minuteAngle = minute * 6;
+    hourHand.style.transform = `rotate(${hourAngle}deg)`;
+    minuteHand.style.transform = `rotate(${minuteAngle}deg)`;
+
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    const displayMinute = minute.toString().padStart(2, '0');
+    digital.textContent = `${displayHour}:${displayMinute}`;
+  }
+  updateClock();
+
+  // ---------- Arrastrar manecillas (modo libre) ----------
+  function angleFromCenter(clientX, clientY){
+    const rect = svg.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+    let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
+    if (deg < 0) deg += 360;
+    return deg;
+  }
+
+  function setupDrag(handEl, type){
+    // Para la manecilla de minutos llevamos un acumulado continuo del ángulo,
+    // así detectamos vueltas completas y avanzamos/retrocedemos la hora automáticamente.
+    let lastDeg = null;
+    let totalDelta = 0;
+    let startHour = hour;
+    let startMinute = minute;
+
+    function onMove(e){
+      if (quizMode) return;
+      const point = e.touches ? e.touches[0] : e;
+      const deg = angleFromCenter(point.clientX, point.clientY);
+
+      if (type === 'minute'){
+        if (lastDeg === null){ lastDeg = deg; return; }
+
+        let diff = deg - lastDeg;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        totalDelta += diff;
+        lastDeg = deg;
+
+        const totalMinuteChange = totalDelta / 6;
+        const newTotalMinutes = startMinute + totalMinuteChange;
+        const hourDelta = Math.floor(newTotalMinutes / 60);
+        const newMinute = ((newTotalMinutes % 60) + 60) % 60;
+
+        minute = Math.round(newMinute) % 60;
+        hour = (((startHour - 1 + hourDelta) % 12) + 12) % 12 + 1;
+      } else {
+        // hora: redondeamos a la hora más cercana, conservando los minutos actuales
+        let h = Math.round(deg / 30) % 12;
+        if (h === 0) h = 12;
+        hour = h;
+      }
+      updateClock();
+    }
+
+    function onUp(){
+      handEl.classList.remove('dragging');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    }
+
+    function onDown(e){
+      if (quizMode) return;
+      lastDeg = null;
+      totalDelta = 0;
+      startHour = hour;
+      startMinute = minute;
+
+      handEl.classList.add('dragging');
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('touchend', onUp);
+      e.preventDefault();
+    }
+
+    handEl.addEventListener('mousedown', onDown);
+    handEl.addEventListener('touchstart', onDown, { passive: false });
+  }
+
+  setupDrag(hourHand, 'hour');
+  setupDrag(minuteHand, 'minute');
+
+  // ---------- Modo reto ----------
+  function formatTime(h, m){
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    return `${displayHour}:${m.toString().padStart(2, '0')}`;
+  }
+
+  function newQuestion(){
+    answered = false;
+    quizStatus.textContent = '';
+
+    const possibleMinutes = [0, 15, 30, 45];
+    hour = Math.floor(Math.random() * 12) + 1;
+    minute = possibleMinutes[Math.floor(Math.random() * possibleMinutes.length)];
+    updateClock();
+
+    const correct = formatTime(hour, minute);
+    const optionsSet = new Set([correct]);
+
+    while (optionsSet.size < 4){
+      const h = Math.floor(Math.random() * 12) + 1;
+      const m = possibleMinutes[Math.floor(Math.random() * possibleMinutes.length)];
+      optionsSet.add(formatTime(h, m));
+    }
+
+    const optionsArr = Array.from(optionsSet).sort(() => Math.random() - 0.5);
+
+    optionsEl.innerHTML = '';
+    optionsArr.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.textContent = opt;
+      btn.addEventListener('click', () => checkAnswer(btn, opt, correct));
+      optionsEl.appendChild(btn);
+    });
+
+    total++;
+    totalEl.textContent = total - 1; // se ajusta al responder
+  }
+
+  function checkAnswer(btn, chosen, correct){
+    if (answered) return;
+    answered = true;
+
+    const buttons = optionsEl.querySelectorAll('button');
+    if (chosen === correct){
+      btn.classList.add('correct');
+      quizStatus.textContent = '¡Correcto! 🎉';
+      score++;
+    } else {
+      btn.classList.add('wrong');
+      buttons.forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
+      quizStatus.textContent = 'Casi... revisa la respuesta correcta.';
+    }
+    scoreEl.textContent = score;
+    totalEl.textContent = total;
+  }
+
+  modeFreeBtn.addEventListener('click', () => {
+    quizMode = false;
+    modeFreeBtn.classList.add('active');
+    modeQuizBtn.classList.remove('active');
+    freePanel.style.display = 'block';
+    quizPanel.classList.remove('show');
+    digital.style.display = 'block';
+    hour = 12; minute = 0;
+    updateClock();
+  });
+
+  modeQuizBtn.addEventListener('click', () => {
+    quizMode = true;
+    modeQuizBtn.classList.add('active');
+    modeFreeBtn.classList.remove('active');
+    freePanel.style.display = 'none';
+    quizPanel.classList.add('show');
+    digital.style.display = 'none';
+    score = 0; total = 0;
+    scoreEl.textContent = 0; totalEl.textContent = 0;
+    newQuestion();
+  });
+</script>
+
+
+<div class="proyectos-nav" style="position:fixed;top:14px;left:14px;z-index:99999;display:flex;gap:8px;flex-wrap:wrap;">
+  <a href="index.html" style="display:inline-block;padding:9px 13px;border-radius:9px;text-decoration:none;color:#fff;background:rgba(5,10,18,.88);border:1px solid rgba(22,131,255,.45);font:600 14px Arial,sans-serif;backdrop-filter:blur(8px);">← Mis proyectos</a>
+  <a href="portafolio.html" style="display:inline-block;padding:9px 13px;border-radius:9px;text-decoration:none;color:#fff;background:rgba(5,10,18,.88);border:1px solid rgba(22,131,255,.45);font:600 14px Arial,sans-serif;backdrop-filter:blur(8px);">Portafolio</a>
+</div>
+
+</body>
+</html>
