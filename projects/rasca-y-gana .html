@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rasca y gana 🎟️</title>
+<style>
+  :root{--b1:#0a0e1a;--b2:#111a30;--b3:#1c3a63;--b4:#2f6fd1;--bd:#5aa8ff;}
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-family:'Trebuchet MS',sans-serif;
+    background:linear-gradient(135deg,var(--b1),var(--b2),var(--b3));background-size:400% 400%;animation:bg 12s ease infinite;padding:20px;position:relative;}
+  @keyframes bg{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+
+  .nav-link{position:fixed;top:16px;left:16px;z-index:10;color:#eaf2ff;background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.2);padding:8px 16px;border-radius:50px;text-decoration:none;
+    font-size:.85rem;font-weight:bold;backdrop-filter:blur(4px);}
+  .nav-link:hover{background:rgba(255,255,255,0.18);}
+
+  h1{color:var(--bd);text-align:center;}
+  p.hint{color:#9db8dd;text-align:center;margin-top:0;}
+  .wrap{position:relative;width:300px;height:180px;border-radius:20px;overflow:hidden;box-shadow:0 12px 25px rgba(47,111,209,.35);}
+  .prize{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+    background:#0f1830;color:var(--bd);font-size:1.15rem;font-weight:bold;padding:16px;}
+  canvas{position:absolute;inset:0;cursor:grab;touch-action:none;}
+  button{margin-top:20px;border:none;border-radius:50px;padding:10px 24px;background:linear-gradient(135deg,var(--b4),#1a4fa0);
+    color:white;font-weight:bold;cursor:pointer;font-family:inherit;}
+</style>
+</head>
+<body>
+<a href="portafolio.html" class="nav-link">← Portafolio</a>
+
+<h1>Rasca y gana 🎟️</h1>
+<p class="hint">Rasca con el dedo o el mouse para descubrir tu "premio"</p>
+<div class="wrap">
+  <div class="prize" id="prize">Ganaste... nada 😂</div>
+  <canvas id="canvas" width="300" height="180"></canvas>
+</div>
+<button onclick="reset()">Reiniciar</button>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const prizeEl = document.getElementById('prize');
+
+  const prizes = [
+    "Ganaste... nada 😂",
+    "Premio: una galleta imaginaria 🍪",
+    "Felicidades, ganaste aire 🌬️",
+    "Sigue intentando, campeón",
+    "0 puntos, pero con estilo ✨",
+    "Ganaste un abrazo virtual 🤗",
+    "Casi, casi... la próxima",
+    "Premio sorpresa: nada de nada",
+    "Ganaste el derecho a volver a intentar",
+    "Esto no era un premio real, lo siento",
+    "Ganaste 1 punto de suerte para mañana",
+    "Premio: la satisfacción de haber rascado"
+  ];
+
+  let drawing = false;
+  let revealed = false;
+
+  function paintCover(){
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#2a3a5c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#dce8ff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Rasca aquí ✨', canvas.width / 2, canvas.height / 2);
+    ctx.globalCompositeOperation = 'destination-out';
+  }
+
+  function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function scratch(e){
+    if (revealed) return;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
+    ctx.fill();
+    checkReveal();
+  }
+
+  function checkReveal(){
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let transparent = 0;
+    for (let i = 3; i < imgData.length; i += 4 * 20){ // muestreo para rendimiento
+      if (imgData[i] === 0) transparent++;
+    }
+    const total = imgData.length / (4 * 20);
+    const pct = transparent / total;
+    if (pct > 0.55 && !revealed){
+      revealed = true;
+      canvas.style.transition = 'opacity 0.5s';
+      canvas.style.opacity = '0';
+      setTimeout(() => canvas.style.display = 'none', 500);
+    }
+  }
+
+  canvas.addEventListener('mousedown', e => { drawing = true; scratch(e); });
+  canvas.addEventListener('mousemove', e => { if (drawing) scratch(e); });
+  window.addEventListener('mouseup', () => drawing = false);
+
+  canvas.addEventListener('touchstart', e => { drawing = true; scratch(e); e.preventDefault(); });
+  canvas.addEventListener('touchmove', e => { if (drawing) scratch(e); e.preventDefault(); });
+  window.addEventListener('touchend', () => drawing = false);
+
+  function reset(){
+    prizeEl.textContent = prizes[Math.floor(Math.random() * prizes.length)];
+    revealed = false;
+    canvas.style.display = 'block';
+    canvas.style.opacity = '1';
+    paintCover();
+  }
+
+  reset();
+</script>
+<nav class="project-nav"><a href="../proyectos.html">← Mis proyectos</a><a href="../index.html">Portafolio</a></nav></body>
+</html>

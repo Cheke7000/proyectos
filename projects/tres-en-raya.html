@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tres en raya</title>
+<style>
+  :root{ --p1:#1a1440; --p2:#241b5e; --p3:#3a2b96; --pd:#a78bfa; --x-color:#7ee8fa; --o-color:#ff8fd0; }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin: 0; min-height: 100%;
+    background: linear-gradient(150deg, var(--p1), var(--p2));
+    font-family: 'Trebuchet MS', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    color: #f0edff;
+  }
+
+  h1{ color: var(--pd); margin: 54px 0 6px; text-align: center; }
+
+  .mode-toggle{
+    display: flex; gap: 8px; margin-bottom: 14px;
+  }
+  .mode-toggle button{
+    border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06);
+    color: #f0edff; padding: 8px 16px; border-radius: 50px; cursor: pointer;
+    font-family: inherit; font-size: .85rem; font-weight: bold;
+  }
+  .mode-toggle button.active{
+    background: linear-gradient(135deg, var(--p3), var(--pd));
+    color: #1a1440;
+  }
+
+  .status{ margin-bottom: 14px; font-weight: bold; color: #dcd3ff; min-height: 22px; text-align: center; }
+
+  .board{
+    display: grid;
+    grid-template-columns: repeat(3, 90px);
+    grid-template-rows: repeat(3, 90px);
+    gap: 8px;
+    background: rgba(255,255,255,0.06);
+    padding: 8px;
+    border-radius: 16px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+  }
+
+  .cell{
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem; font-weight: bold; cursor: pointer;
+    transition: background .15s ease;
+  }
+  .cell:hover{ background: rgba(255,255,255,0.12); }
+  .cell.x{ color: var(--x-color); }
+  .cell.o{ color: var(--o-color); }
+  .cell.win{ background: rgba(167,139,250,0.35); }
+
+  button.restart{
+    margin-top: 20px; border: none; border-radius: 50px; padding: 10px 26px;
+    background: linear-gradient(135deg, var(--p3), var(--pd));
+    color: #1a1440; font-weight: bold; cursor: pointer; font-family: inherit;
+  }
+
+  @media (max-width: 380px){
+    .board{ grid-template-columns: repeat(3, 78px); grid-template-rows: repeat(3, 78px); }
+  }
+</style>
+</head>
+<body>
+
+<h1>Tres en raya</h1>
+
+<div class="mode-toggle">
+  <button id="mode2p" class="active">2 jugadores</button>
+  <button id="modeAI">Vs. computadora</button>
+</div>
+
+<p class="status" id="status">Turno de X</p>
+
+<div class="board" id="board"></div>
+
+<button class="restart" onclick="resetGame()">Reiniciar</button>
+
+<script>
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const mode2pBtn = document.getElementById('mode2p');
+  const modeAIBtn = document.getElementById('modeAI');
+
+  let cells = Array(9).fill(null);
+  let current = 'X';
+  let vsAI = false;
+  let gameOver = false;
+
+  const winLines = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  function render(){
+    boardEl.innerHTML = '';
+    cells.forEach((val, i) => {
+      const div = document.createElement('div');
+      div.className = 'cell' + (val ? ' ' + val.toLowerCase() : '');
+      div.textContent = val || '';
+      div.addEventListener('click', () => handleMove(i));
+      boardEl.appendChild(div);
+    });
+  }
+
+  function handleMove(i){
+    if (gameOver || cells[i]) return;
+    cells[i] = current;
+    render();
+
+    const result = checkWinner(cells);
+    if (result){
+      return finishGame(result);
+    }
+    if (cells.every(c => c)){
+      statusEl.textContent = '¡Empate!';
+      gameOver = true;
+      return;
+    }
+
+    current = current === 'X' ? 'O' : 'X';
+    statusEl.textContent = `Turno de ${current}`;
+
+    if (vsAI && current === 'O' && !gameOver){
+      setTimeout(aiMove, 350);
+    }
+  }
+
+  function aiMove(){
+    const best = minimax(cells, 'O').index;
+    if (best !== undefined) handleMove(best);
+  }
+
+  function checkWinner(board){
+    for (const line of winLines){
+      const [a,b,c] = line;
+      if (board[a] && board[a] === board[b] && board[a] === board[c]){
+        return { winner: board[a], line };
+      }
+    }
+    return null;
+  }
+
+  function finishGame(result){
+    gameOver = true;
+    statusEl.textContent = `¡Ganó ${result.winner}!`;
+    result.line.forEach(i => {
+      boardEl.children[i].classList.add('win');
+    });
+  }
+
+  // Minimax simple para el modo "vs computadora" (la IA nunca pierde)
+  function minimax(board, player){
+    const opponent = player === 'O' ? 'X' : 'O';
+    const winner = checkWinner(board);
+
+    if (winner) return { score: winner.winner === 'O' ? 10 : -10 };
+    if (board.every(c => c)) return { score: 0 };
+
+    const moves = [];
+    board.forEach((val, i) => {
+      if (!val){
+        const newBoard = [...board];
+        newBoard[i] = player;
+        const result = minimax(newBoard, opponent);
+        moves.push({ index: i, score: result.score });
+      }
+    });
+
+    if (player === 'O'){
+      return moves.reduce((best, m) => m.score > best.score ? m : best, { score: -Infinity });
+    } else {
+      return moves.reduce((best, m) => m.score < best.score ? m : best, { score: Infinity });
+    }
+  }
+
+  function resetGame(){
+    cells = Array(9).fill(null);
+    current = 'X';
+    gameOver = false;
+    statusEl.textContent = 'Turno de X';
+    render();
+  }
+
+  mode2pBtn.addEventListener('click', () => {
+    vsAI = false;
+    mode2pBtn.classList.add('active');
+    modeAIBtn.classList.remove('active');
+    resetGame();
+  });
+
+  modeAIBtn.addEventListener('click', () => {
+    vsAI = true;
+    modeAIBtn.classList.add('active');
+    mode2pBtn.classList.remove('active');
+    resetGame();
+  });
+
+  render();
+</script>
+
+<nav class="project-nav"><a href="../proyectos.html">← Mis proyectos</a><a href="../index.html">Portafolio</a></nav></body>
+</html>

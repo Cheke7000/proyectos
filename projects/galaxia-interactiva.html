@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxia interactiva</title>
+<style>
+  *{ box-sizing: border-box; }
+  html, body{
+    margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 30%, #140b2e, #05020c 70%);
+    font-family: 'Trebuchet MS', sans-serif;
+  }
+  canvas{ display: block; touch-action: none; }
+
+  .title{
+    position: fixed; top: 20px; left: 0; right: 0; text-align: center;
+    color: #f0e9ff; letter-spacing: 3px; font-size: 1.2rem; text-transform: uppercase;
+    opacity: .85; z-index: 5; pointer-events: none;
+  }
+
+  .hint{
+    position: fixed; bottom: 16px; left: 0; right: 0; text-align: center;
+    color: #c9b6ff; font-size: .8rem; opacity: .65; z-index: 5; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="title">Galaxia interactiva</div>
+<div class="hint">Mueve el mouse o el dedo para alterar las partículas</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let W, H;
+  function resize(){
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const colors = ['#a78bfa', '#7ee8fa', '#ff8fd0', '#ffd97a', '#7c4dff'];
+
+  function makeParticle(){
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    return {
+      ox: x, oy: y,      // posición original (a la que siempre intenta volver)
+      x, y,
+      vx: 0, vy: 0,
+      r: 0.8 + Math.random() * 2,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    };
+  }
+
+  let particles = [];
+  function buildParticles(){
+    const count = Math.min(1600, Math.floor((W * H) / 1100));
+    particles = Array.from({ length: count }, makeParticle);
+  }
+  buildParticles();
+  window.addEventListener('resize', buildParticles);
+
+  const mouse = { x: -9999, y: -9999, active: false };
+
+  function setMouse(x, y){
+    mouse.x = x; mouse.y = y; mouse.active = true;
+  }
+
+  window.addEventListener('mousemove', e => setMouse(e.clientX, e.clientY));
+  window.addEventListener('mouseleave', () => { mouse.active = false; });
+
+  window.addEventListener('touchmove', e => {
+    if (e.touches.length){
+      setMouse(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    }
+  }, { passive: false });
+  window.addEventListener('touchend', () => { mouse.active = false; });
+
+  const REPEL_RADIUS = 110;
+  const REPEL_STRENGTH = 3.2;
+  const SPRING = 0.02;
+  const FRICTION = 0.9;
+
+  function animate(){
+    ctx.clearRect(0, 0, W, H);
+
+    particles.forEach(p => {
+      // fuerza de resorte hacia la posición original
+      const dxHome = p.ox - p.x;
+      const dyHome = p.oy - p.y;
+      p.vx += dxHome * SPRING;
+      p.vy += dyHome * SPRING;
+
+      // repulsión del mouse
+      if (mouse.active){
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (dist < REPEL_RADIUS){
+          const force = (1 - dist / REPEL_RADIUS) * REPEL_STRENGTH;
+          p.vx += (dx / dist) * force;
+          p.vy += (dy / dist) * force;
+        }
+      }
+
+      p.vx *= FRICTION;
+      p.vy *= FRICTION;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.85;
+      ctx.fill();
+    });
+
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+
+<nav class="project-nav"><a href="../proyectos.html">← Mis proyectos</a><a href="../index.html">Portafolio</a></nav></body>
+</html>

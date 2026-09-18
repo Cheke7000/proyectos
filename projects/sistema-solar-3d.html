@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Solar 3D</title>
+<style>
+  html, body{
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Trebuchet MS', sans-serif;
+  }
+  canvas{ display: block; }
+
+  .title{
+    position: fixed;
+    top: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #f4f0ff;
+    letter-spacing: 3px;
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    opacity: 0.85;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .hint{
+    position: fixed;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #b9b3d6;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  #loading{
+    position: fixed;
+    inset: 0;
+    background: #05010f;
+    color: #ffd97a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">Cargando el sistema solar...</div>
+<div class="title">Sistema Solar 3D</div>
+<div class="hint">Arrastra para girar la cámara · rueda del mouse para acercar/alejar</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
+  camera.position.set(0, 60, 140);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 30;
+  controls.maxDistance = 400;
+
+  // ---------- Luces ----------
+  const ambient = new THREE.AmbientLight(0x333344, 1.2);
+  scene.add(ambient);
+
+  const sunLight = new THREE.PointLight(0xfff2c8, 2.4, 0, 1.6);
+  sunLight.position.set(0, 0, 0);
+  scene.add(sunLight);
+
+  // ---------- Estrellas de fondo ----------
+  function buildStars(count, spread, size, color){
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++){
+      const r = spread * (0.6 + Math.random() * 0.4);
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+      positions[i*3]     = r * Math.sin(phi) * Math.cos(theta);
+      positions[i*3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i*3 + 2] = r * Math.cos(phi);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({ color, size, sizeAttenuation: true, transparent: true, opacity: 0.9 });
+    return new THREE.Points(geo, mat);
+  }
+
+  scene.add(buildStars(2200, 900, 1.1, 0xffffff));
+  scene.add(buildStars(900, 700, 1.8, 0xd8ccff));
+  scene.add(buildStars(400, 500, 2.4, 0xffe9c7));
+
+  // ---------- Sol ----------
+  const sunGeo = new THREE.SphereGeometry(9, 48, 48);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffd45e });
+  const sun = new THREE.Mesh(sunGeo, sunMat);
+  scene.add(sun);
+
+  // resplandor del sol (sprite con textura radial generada por canvas)
+  function makeGlowTexture(){
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    gradient.addColorStop(0, 'rgba(255,240,200,0.9)');
+    gradient.addColorStop(0.35, 'rgba(255,200,110,0.45)');
+    gradient.addColorStop(1, 'rgba(255,150,60,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  const glowMaterial = new THREE.SpriteMaterial({
+    map: makeGlowTexture(),
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const glowSprite = new THREE.Sprite(glowMaterial);
+  glowSprite.scale.set(50, 50, 1);
+  sun.add(glowSprite);
+
+  // ---------- Planetas ----------
+  // Cada planeta: radio propio, distancia al sol, velocidad orbital, velocidad de rotación, color
+  // "moons": lunas propias, cada una con su tamaño, distancia al planeta y velocidad orbital
+  const planetData = [
+    { name: 'Mercurio', size: 0.9,  dist: 14,  speed: 0.020, color: 0xb8b0a8 },
+    { name: 'Venus',    size: 1.5,  dist: 19,  speed: 0.015, color: 0xe8c27a },
+    { name: 'Tierra',   size: 1.7,  dist: 25,  speed: 0.012, color: 0x2c6fd1,
+      moons: [
+        { size: 0.45, dist: 2.6, speed: 0.05, color: 0xcccccc }
+      ]
+    },
+    { name: 'Marte',    size: 1.2,  dist: 31,  speed: 0.010, color: 0xd1583a,
+      moons: [
+        { size: 0.18, dist: 1.7, speed: 0.08, color: 0xaaaaaa },
+        { size: 0.14, dist: 2.2, speed: 0.06, color: 0x999999 }
+      ]
+    },
+    { name: 'Júpiter',  size: 4.2,  dist: 42,  speed: 0.006, color: 0xc98a4b,
+      moons: [
+        { size: 0.55, dist: 5.6, speed: 0.045, color: 0xdad2b9 },
+        { size: 0.5,  dist: 6.4, speed: 0.038, color: 0xcac2a0 },
+        { size: 0.7,  dist: 7.4, speed: 0.030, color: 0xb8ac8d },
+        { size: 0.65, dist: 8.4, speed: 0.022, color: 0x9d9483 }
+      ]
+    },
+    { name: 'Saturno',  size: 3.6,  dist: 54,  speed: 0.0045, color: 0xd8b478, ring: true,
+      moons: [
+        { size: 0.6, dist: 6.2, speed: 0.03, color: 0xd8c9a3 }
+      ]
+    },
+    { name: 'Urano',    size: 2.6,  dist: 65,  speed: 0.003, color: 0x7fd6d0,
+      moons: [
+        { size: 0.32, dist: 4.0, speed: 0.04, color: 0xb8c9d9 }
+      ]
+    },
+    { name: 'Neptuno',  size: 2.5,  dist: 75,  speed: 0.0022, color: 0x4f7fd9,
+      moons: [
+        { size: 0.32, dist: 4.0, speed: 0.04, color: 0x8fa8d9 }
+      ]
+    }
+  ];
+
+  const planets = [];
+  const moons = [];
+
+  planetData.forEach(data => {
+    // pivote invisible que gira alrededor del sol
+    const pivot = new THREE.Object3D();
+    pivot.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(pivot);
+
+    // grupo propio del planeta: aquí se posiciona a su distancia del sol.
+    // Las lunas cuelgan de este grupo (no del mesh), así su órbita no se ve afectada por el giro del planeta sobre su eje.
+    const planetGroup = new THREE.Object3D();
+    planetGroup.position.x = data.dist;
+    pivot.add(planetGroup);
+
+    const geo = new THREE.SphereGeometry(data.size, 32, 32);
+    const mat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.8, metalness: 0.1 });
+    const mesh = new THREE.Mesh(geo, mat);
+    planetGroup.add(mesh);
+
+    // anillo de la órbita alrededor del sol (visual, apenas visible)
+    const orbitGeo = new THREE.RingGeometry(data.dist - 0.05, data.dist + 0.05, 128);
+    const orbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.08 });
+    const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
+    orbitLine.rotation.x = Math.PI / 2;
+    scene.add(orbitLine);
+
+    if (data.ring){
+      const ringGeo = new THREE.RingGeometry(data.size * 1.4, data.size * 2.3, 64);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xd8c9a3, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = Math.PI / 2.4;
+      mesh.add(ringMesh);
+    }
+
+    // lunas: cada una tiene su propio pivote dentro del grupo del planeta
+    (data.moons || []).forEach(m => {
+      const moonPivot = new THREE.Object3D();
+      moonPivot.rotation.y = Math.random() * Math.PI * 2;
+      moonPivot.rotation.x = (Math.random() - 0.5) * 0.3; // pequeña inclinación para variedad visual
+      planetGroup.add(moonPivot);
+
+      const moonGeo = new THREE.SphereGeometry(m.size, 16, 16);
+      const moonMat = new THREE.MeshStandardMaterial({ color: m.color, roughness: 0.9 });
+      const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+      moonMesh.position.x = m.dist;
+      moonPivot.add(moonMesh);
+
+      moons.push({ pivot: moonPivot, speed: m.speed });
+    });
+
+    planets.push({ pivot, mesh, speed: data.speed, spin: 0.01 + Math.random() * 0.02 });
+  });
+
+  // ---------- Cinturón de asteroides (entre Marte y Júpiter) ----------
+  const asteroidBelt = new THREE.Object3D();
+  scene.add(asteroidBelt);
+
+  function buildAsteroidBelt(count, innerR, outerR, thickness){
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++){
+      const angle = Math.random() * Math.PI * 2;
+      const radius = innerR + Math.random() * (outerR - innerR);
+      const y = (Math.random() - 0.5) * thickness;
+      positions[i*3]     = Math.cos(angle) * radius;
+      positions[i*3 + 1] = y;
+      positions[i*3 + 2] = Math.sin(angle) * radius;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({ color: 0xbcae9c, size: 0.35, sizeAttenuation: true });
+    return new THREE.Points(geo, mat);
+  }
+
+  // radio entre la órbita de Marte (31) y la de Júpiter (42)
+  asteroidBelt.add(buildAsteroidBelt(1400, 34, 39, 1.4));
+
+  // ---------- Resize ----------
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ---------- Animación ----------
+  function animate(){
+    requestAnimationFrame(animate);
+
+    planets.forEach(p => {
+      p.pivot.rotation.y += p.speed;
+      p.mesh.rotation.y += p.spin;
+    });
+
+    moons.forEach(m => {
+      m.pivot.rotation.y += m.speed;
+    });
+
+    asteroidBelt.rotation.y += 0.0009;
+
+    sun.rotation.y += 0.002;
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  animate();
+</script>
+
+
+<style>
+.portfolio-nav{position:fixed;top:16px;left:16px;z-index:9999;color:#eaf6ff;background:rgba(5,15,35,.75);border:1px solid rgba(80,180,255,.45);padding:9px 16px;border-radius:999px;text-decoration:none;font:600 14px Arial,sans-serif;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(0,140,255,.15)}
+.portfolio-nav:hover{background:rgba(20,70,120,.85);transform:translateY(-1px)}
+</style>
+<a class="portfolio-nav" href="index.html">← Portafolio</a>
+
+</body>
+</html>
