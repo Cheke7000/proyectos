@@ -1,1 +1,0 @@
-document.querySelectorAll('.project-card').forEach(card=>card.addEventListener('click',e=>{if(e.target.closest('a'))return;}));
