@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Eclipse interactivo</title>
+<style>
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body{
+    margin: 0; height: 100%; overflow: hidden;
+    font-family: 'Trebuchet MS', Arial, sans-serif; color: #fff;
+  }
+  .stage{
+    position: relative; width: 100%; height: 100vh;
+    background: linear-gradient(180deg, #4fa8e0, #cfeaf8);
+    overflow: hidden; touch-action: none;
+    transition: background 0.05s linear;
+  }
+
+  header{
+    position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+    text-align: center; padding: 16px 12px 6px; pointer-events: none;
+  }
+  header h1{ margin: 0 0 2px; font-size: clamp(1.1rem, 5vw, 1.6rem); text-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+  header p{ margin: 0; font-size: 0.82rem; opacity: 0.9; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+
+  /* ---------- Estrellas (aparecen de noche) ---------- */
+  .stars{ position: absolute; inset: 0; z-index: 1; opacity: 0; }
+  .star{ position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; }
+
+  /* ---------- Sol ---------- */
+  .sun-wrap{ position: absolute; z-index: 2; width: 120px; height: 120px; margin-left: -60px; margin-top: -60px; }
+  .sun-rays{
+    position: absolute; inset: -60px; width: 240px; height: 240px;
+    animation: spin 50s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  .sun-core{
+    position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #fff7d6, #ffd35c 55%, #ffb200 100%);
+    box-shadow: 0 0 60px 30px rgba(255,200,80,0.55);
+  }
+
+  /* ---------- Corona (solo visible casi tapado) ---------- */
+  .corona{
+    position: absolute; z-index: 3; width: 260px; height: 260px; margin-left: -130px; margin-top: -130px;
+    border-radius: 50%; opacity: 0; pointer-events: none;
+  }
+  .corona-glow{
+    position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,244,214,0.55) 30%, transparent 70%);
+  }
+  .corona-spikes{
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    animation: spin 65s linear infinite reverse;
+  }
+
+  /* ---------- Luna ---------- */
+  .moon{
+    position: absolute; z-index: 4; width: 120px; height: 120px; margin-left: -60px; margin-top: -60px;
+    border-radius: 50%; cursor: grab;
+    background: radial-gradient(circle at 38% 35%, #6b6f77, #2b2d33 70%);
+    box-shadow: inset -14px -10px 24px rgba(0,0,0,0.6), 0 6px 16px rgba(0,0,0,0.4);
+  }
+  .moon:active{ cursor: grabbing; }
+  .moon .crater{ position: absolute; border-radius: 50%; background: rgba(0,0,0,0.25); }
+
+  .coverage-readout{
+    position: absolute; bottom: 16px; left: 0; right: 0; z-index: 20;
+    text-align: center; font-size: 0.85rem; text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+
+  .reset-btn{
+    position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); z-index: 20;
+    padding: 8px 18px; border-radius: 30px; border: none; background: rgba(255,255,255,0.18);
+    color: #fff; font-size: 0.82rem; cursor: pointer; backdrop-filter: blur(4px);
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="stars" id="stars"></div>
+
+  <div class="sun-wrap" id="sunWrap">
+    <svg class="sun-rays" id="sunRays" viewBox="-120 -120 240 240">
+      <g id="sunRaysGroup"></g>
+    </svg>
+    <div class="sun-core"></div>
+  </div>
+
+  <div class="corona" id="corona">
+    <div class="corona-glow"></div>
+    <svg class="corona-spikes" id="coronaSpikes" viewBox="-130 -130 260 260">
+      <g id="coronaSpikesGroup"></g>
+    </svg>
+  </div>
+
+  <div class="moon" id="moon"></div>
+
+  <header>
+    <h1>Eclipse Solar</h1>
+    <p>Arrastra la luna hasta cubrir el sol por completo</p>
+  </header>
+
+  <button class="reset-btn" id="resetBtn">Reiniciar</button>
+  <div class="coverage-readout" id="readout">Cobertura del sol: 0%</div>
+</div>
+
+<script>
+  // ---------- Rayos curvos y puntiagudos (SVG), para el sol y la corona ----------
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function buildRays(groupEl, opts){
+    const { count, r0, r1Min, r1Max, baseHalfWidth, curl, fill, opacityMin, opacityMax } = opts;
+    for (let i = 0; i < count; i++){
+      const angle = (360 / count) * i + (Math.random() * 6 - 3);
+      const r1 = r1Min + Math.random() * (r1Max - r1Min);
+      const mid = (r0 + r1) / 2;
+      const d = `M ${r0} ${-baseHalfWidth} Q ${mid} ${-(baseHalfWidth + curl)} ${r1} 0 Q ${mid} ${baseHalfWidth + curl} ${r0} ${baseHalfWidth} Z`;
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', fill);
+      path.setAttribute('opacity', (opacityMin + Math.random() * (opacityMax - opacityMin)).toFixed(2));
+      path.setAttribute('transform', `rotate(${angle.toFixed(1)})`);
+      groupEl.appendChild(path);
+    }
+  }
+
+  buildRays(document.getElementById('sunRaysGroup'), {
+    count: 18, r0: 62, r1Min: 92, r1Max: 128, baseHalfWidth: 7, curl: 16,
+    fill: '#ffe07a', opacityMin: 0.45, opacityMax: 0.85
+  });
+  buildRays(document.getElementById('coronaSpikesGroup'), {
+    count: 30, r0: 72, r1Min: 98, r1Max: 128, baseHalfWidth: 3.5, curl: 10,
+    fill: '#ffffff', opacityMin: 0.55, opacityMax: 0.95
+  });
+
+  const stage = document.getElementById('stage');
+  const sunWrap = document.getElementById('sunWrap');
+  const moon = document.getElementById('moon');
+  const corona = document.getElementById('corona');
+  const sunRays = document.getElementById('sunRays');
+  const stars = document.getElementById('stars');
+  const readout = document.getElementById('readout');
+
+  // ---------- Cráteres decorativos en la luna ----------
+  const craterSpecs = [[20,25,14],[65,60,10],[40,75,8],[80,30,7],[25,55,6]];
+  craterSpecs.forEach(([x,y,s]) => {
+    const c = document.createElement('div');
+    c.className = 'crater';
+    c.style.left = x + '%'; c.style.top = y + '%';
+    c.style.width = s + 'px'; c.style.height = s + 'px';
+    moon.appendChild(c);
+  });
+
+  // ---------- Estrellas ----------
+  for (let i = 0; i < 70; i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 70 + '%';
+    s.style.opacity = (0.4 + Math.random() * 0.6).toFixed(2);
+    stars.appendChild(s);
+  }
+
+  // ---------- Posición fija del sol (en % del stage) ----------
+  let sunPercent = { x: 50, y: 34 };
+
+  function placeSun(){
+    const rect = stage.getBoundingClientRect();
+    sunWrap.style.left = (rect.width * sunPercent.x / 100) + 'px';
+    sunWrap.style.top = (rect.height * sunPercent.y / 100) + 'px';
+    corona.style.left = sunWrap.style.left;
+    corona.style.top = sunWrap.style.top;
+  }
+
+  // ---------- Colores de cielo: día <-> noche ----------
+  const DAY_TOP = [79, 168, 224], DAY_BOTTOM = [207, 234, 248];
+  const NIGHT_TOP = [5, 7, 18], NIGHT_BOTTOM = [16, 19, 34];
+  function lerp(a, b, t){ return Math.round(a + (b - a) * t); }
+  function lerpColor(c1, c2, t){ return `rgb(${lerp(c1[0],c2[0],t)},${lerp(c1[1],c2[1],t)},${lerp(c1[2],c2[2],t)})`; }
+
+  function updateVisuals(coverage){
+    const top = lerpColor(DAY_TOP, NIGHT_TOP, coverage);
+    const bottom = lerpColor(DAY_BOTTOM, NIGHT_BOTTOM, coverage);
+    stage.style.background = `linear-gradient(180deg, ${top}, ${bottom})`;
+
+    stars.style.opacity = Math.max(0, (coverage - 0.45) / 0.4).toFixed(2);
+    sunRays.style.opacity = Math.max(0, 1 - coverage * 1.3).toFixed(2);
+
+    const coronaOpacity = Math.max(0, (coverage - 0.82) / 0.18);
+    corona.style.opacity = coronaOpacity.toFixed(2);
+
+    readout.textContent = coverage >= 0.98
+      ? '🌑 ¡Eclipse total!'
+      : `Cobertura del sol: ${Math.round(coverage * 100)}%`;
+  }
+
+  // ---------- Posición y arrastre de la luna ----------
+  let moonPos = { x: 20, y: 34 }; // % del stage
+
+  function placeMoon(){
+    const rect = stage.getBoundingClientRect();
+    moon.style.left = (rect.width * moonPos.x / 100) + 'px';
+    moon.style.top = (rect.height * moonPos.y / 100) + 'px';
+    computeCoverage();
+  }
+
+  function computeCoverage(){
+    const rect = stage.getBoundingClientRect();
+    const sunPx = { x: rect.width * sunPercent.x / 100, y: rect.height * sunPercent.y / 100 };
+    const moonPx = { x: rect.width * moonPos.x / 100, y: rect.height * moonPos.y / 100 };
+    const dist = Math.hypot(sunPx.x - moonPx.x, sunPx.y - moonPx.y);
+    const radius = 60; // radio aproximado de sol/luna en px
+    const coverage = Math.max(0, Math.min(1, 1 - dist / (radius * 2)));
+    updateVisuals(coverage);
+  }
+
+  let dragging = false, offset = { x: 0, y: 0 };
+
+  moon.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    moon.setPointerCapture(e.pointerId);
+    const rect = stage.getBoundingClientRect();
+    offset.x = e.clientX - (rect.left + rect.width * moonPos.x / 100);
+    offset.y = e.clientY - (rect.top + rect.height * moonPos.y / 100);
+  });
+
+  moon.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const rect = stage.getBoundingClientRect();
+    let px = e.clientX - rect.left - offset.x;
+    let py = e.clientY - rect.top - offset.y;
+    px = Math.max(0, Math.min(rect.width, px));
+    py = Math.max(0, Math.min(rect.height, py));
+    moonPos.x = (px / rect.width) * 100;
+    moonPos.y = (py / rect.height) * 100;
+    placeMoon();
+  });
+
+  function stopDrag(e){ dragging = false; }
+  moon.addEventListener('pointerup', stopDrag);
+  moon.addEventListener('pointercancel', stopDrag);
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    moonPos = { x: 20, y: 34 };
+    placeMoon();
+  });
+
+  function layoutAll(){ placeSun(); placeMoon(); }
+  window.addEventListener('resize', layoutAll);
+  layoutAll();
+</script>
+
+</body>
+</html>

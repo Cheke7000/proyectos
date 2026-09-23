@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abecedario interactivo</title>
+<style>
+  :root{
+    --bg-deep:#05060f;
+    --bg-mid:#0d1224;
+    --card-bd: rgba(255,255,255,0.08);
+  }
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    min-height: 100%;
+    background: radial-gradient(ellipse at 50% 20%, var(--bg-mid), var(--bg-deep) 70%);
+    font-family: 'Trebuchet MS', sans-serif;
+    color: #f0f2ff;
+  }
+
+  .nav-link{
+    position: fixed; top: 16px; left: 16px; z-index: 20;
+    color: #eaf2ff; background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 8px 16px; border-radius: 50px; text-decoration: none;
+    font-size: .85rem; font-weight: bold; backdrop-filter: blur(4px);
+  }
+  .nav-link:hover{ background: rgba(255,255,255,0.18); }
+
+  header{
+    text-align: center;
+    padding: 70px 20px 20px;
+  }
+
+  h1{
+    margin: 0 0 6px 0;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    background: linear-gradient(135deg, #7ee8fa, #eec0c6, #ffd97a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  header p{
+    color: #b7bde0;
+    margin: 0;
+    font-size: .95rem;
+  }
+
+  .grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 14px;
+    max-width: 900px;
+    margin: 30px auto 60px;
+    padding: 0 20px;
+  }
+
+  .card{
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 16px;
+    border: 1px solid var(--card-bd);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    color: white;
+  }
+
+  .card:hover{
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+  }
+
+  .card.grow{
+    transform: scale(1.35);
+    z-index: 5;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  }
+
+  /* Overlay del pop-up */
+  .overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 4, 12, 0.75);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    padding: 20px;
+  }
+
+  .overlay.show{ display: flex; }
+
+  .modal{
+    background: linear-gradient(160deg, #131a33, #0b0e1c);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 26px;
+    padding: 40px 36px;
+    text-align: center;
+    max-width: 320px;
+    width: 100%;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.55);
+    animation: pop .3s ease;
+    position: relative;
+  }
+
+  @keyframes pop{
+    0%{ transform: scale(0.7); opacity: 0; }
+    100%{ transform: scale(1); opacity: 1; }
+  }
+
+  .modal .big-letter{
+    font-size: 5rem;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+
+  .modal .emoji{
+    font-size: 3.2rem;
+    margin: 14px 0 6px;
+  }
+
+  .modal .word{
+    color: #cfd6ff;
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  .modal .desc{
+    color: #9aa3cc;
+    font-size: 0.85rem;
+    margin-top: 10px;
+    line-height: 1.4;
+  }
+
+  .modal .close-btn{
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: #b7bde0;
+    font-size: 1.3rem;
+    cursor: pointer;
+  }
+
+  .modal .close-btn:hover{ color: white; }
+</style>
+</head>
+<body>
+
+<!-- <a href="portafolio.html" class="nav-link">← Portafolio</a> -->
+
+<header>
+  <h1>Abecedario interactivo</h1>
+  <p>Toca una letra para verla en grande, junto a una palabra y su emoji (si existe uno)</p>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="big-letter" id="modalLetter"></div>
+    <div class="emoji" id="modalEmoji"></div>
+    <p class="word" id="modalWord"></p>
+    <p class="desc" id="modalDesc"></p>
+  </div>
+</div>
+
+<script>
+  // Letras del abecedario en español
+  const letters = [
+    { letter: 'A', word: 'Abeja',    emoji: '🐝', desc: 'Insecto volador que produce miel y vive en colonias.' },
+    { letter: 'B', word: 'Ballena',  emoji: '🐳', desc: 'El animal más grande que existe, vive en el océano.' },
+    { letter: 'C', word: 'Cebra',    emoji: '🦓', desc: 'Animal africano parecido al caballo, con rayas blancas y negras.' },
+    { letter: 'D', word: 'Delfín',   emoji: '🐬', desc: 'Mamífero marino muy inteligente y juguetón.' },
+    { letter: 'E', word: 'Estrella', emoji: '⭐', desc: 'Cuerpo celeste que brilla en el cielo durante la noche.' },
+    { letter: 'F', word: 'Fuego',    emoji: '🔥', desc: 'Combustión que produce luz y calor.' },
+    { letter: 'G', word: 'Gato',     emoji: '🐱', desc: 'Mascota felina muy común en los hogares.' },
+    { letter: 'H', word: 'Helado',   emoji: '🍦', desc: 'Postre frío y dulce, ideal para el calor.' },
+    { letter: 'I', word: 'Iguana',   emoji: '🦎', desc: 'Reptil de gran tamaño que suele tomar el sol.' },
+    { letter: 'J', word: 'Jirafa',   emoji: '🦒', desc: 'Animal africano con un cuello muy largo.' },
+    { letter: 'K', word: 'Koala',    emoji: '🐨', desc: 'Marsupial australiano que vive en los árboles de eucalipto.' },
+    { letter: 'L', word: 'León',     emoji: '🦁', desc: 'Conocido como el rey de la selva.' },
+    { letter: 'M', word: 'Mono',     emoji: '🐒', desc: 'Primate ágil que vive en los árboles.' },
+    { letter: 'N', word: 'Nube',     emoji: '☁️', desc: 'Masa de vapor de agua que flota en el cielo.' },
+    { letter: 'Ñ', word: 'Ñandú',    emoji: null, desc: 'Ave grande que no vuela, parecida al avestruz, típica de Sudamérica.' },
+    { letter: 'O', word: 'Oso',      emoji: '🐻', desc: 'Mamífero grande y fuerte que vive en bosques y montañas.' },
+    { letter: 'P', word: 'Pingüino', emoji: '🐧', desc: 'Ave que no vuela, pero nada muy bien en aguas frías.' },
+    { letter: 'Q', word: 'Queso',    emoji: '🧀', desc: 'Alimento hecho a partir de la leche.' },
+    { letter: 'R', word: 'Ratón',    emoji: '🐭', desc: 'Pequeño roedor muy común.' },
+    { letter: 'S', word: 'Sol',      emoji: '☀️', desc: 'Estrella que da luz y calor a la Tierra.' },
+    { letter: 'T', word: 'Tigre',    emoji: '🐯', desc: 'Felino grande con rayas negras y anaranjadas.' },
+    { letter: 'U', word: 'Uvas',     emoji: '🍇', desc: 'Frutas pequeñas y jugosas que crecen en racimos.' },
+    { letter: 'V', word: 'Vaca',     emoji: '🐄', desc: 'Animal de granja que produce leche.' },
+    { letter: 'W', word: 'Wifi',     emoji: '📶', desc: 'Tecnología que permite conectarse a internet sin cables.' },
+    { letter: 'X', word: 'Xilófono', emoji: null, desc: 'Instrumento musical de percusión con láminas de distinto tamaño.' },
+    { letter: 'Y', word: 'Yate',     emoji: '🛥️', desc: 'Embarcación de lujo usada para paseos o viajes.' },
+    { letter: 'Z', word: 'Zorro',    emoji: '🦊', desc: 'Animal astuto de cola larga y esponjosa.' }
+  ];
+
+  const grid = document.getElementById('grid');
+  const overlay = document.getElementById('overlay');
+  const modalLetter = document.getElementById('modalLetter');
+  const modalEmoji = document.getElementById('modalEmoji');
+  const modalWord = document.getElementById('modalWord');
+  const modalDesc = document.getElementById('modalDesc');
+
+  let activeCard = null;
+
+  // Paleta de colores que rota por tarjeta
+  const palette = [
+    ['#ff5c93', '#d6336c'], ['#5aa8ff', '#2f6fd1'], ['#7ee8fa', '#1fa7c9'],
+    ['#ffd97a', '#e0a33c'], ['#a78bfa', '#7c4dff'], ['#7ed957', '#2fae4e'],
+    ['#ff9a3c', '#e0672a']
+  ];
+
+  letters.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const colors = palette[i % palette.length];
+    card.style.background = `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`;
+    card.textContent = item.letter;
+
+    card.addEventListener('click', () => openCard(card, item));
+    grid.appendChild(card);
+  });
+
+  function openCard(card, item){
+    activeCard = card;
+    card.classList.add('grow');
+
+    setTimeout(() => {
+      modalLetter.textContent = item.letter;
+      modalWord.textContent = item.word;
+      modalDesc.textContent = item.desc;
+
+      if (item.emoji){
+        modalEmoji.textContent = item.emoji;
+        modalEmoji.classList.remove('hidden');
+      } else {
+        modalEmoji.textContent = '';
+      }
+
+      overlay.classList.add('show');
+    }, 200);
+  }
+
+  function closeModal(){
+    overlay.classList.remove('show');
+    if (activeCard){
+      activeCard.classList.remove('grow');
+      activeCard = null;
+    }
+  }
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+</script>
+
+</body>
+</html>

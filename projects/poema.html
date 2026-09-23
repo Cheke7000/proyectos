@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anatomía de la Soledad - Poema Interactivo</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,400&family=Montserrat:wght@200;400&display=swap');
+
+    :root {
+      --bg-color: #080a0f;
+      --card-bg: rgba(18, 22, 32, 0.65);
+      --accent-gold: #c9a063;
+      --accent-soft: #8a99ad;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Cormorant Garamond', serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      line-height: 1.8;
+    }
+
+    /* Canvas de fondo ambiental */
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Contenedor principal */
+    .container {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 80px 20px 120px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 80px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 300;
+      letter-spacing: 4px;
+      color: var(--accent-gold);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Estrofas */
+    .stanza-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(201, 160, 99, 0.15);
+      border-radius: 12px;
+      padding: 40px;
+      margin-bottom: 70px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0.3;
+      transform: translateY(40px);
+    }
+
+    .stanza-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+      border-color: rgba(201, 160, 99, 0.3);
+    }
+
+    .poem-lines {
+      font-size: 1.45rem;
+      font-weight: 400;
+      color: #f1f5f9;
+      text-align: center;
+      margin-bottom: 30px;
+      letter-spacing: 0.5px;
+    }
+
+    .poem-lines p {
+      margin-bottom: 8px;
+    }
+
+    /* Interacciones contextuales */
+    .interaction-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 180px;
+      margin-top: 20px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      padding-top: 25px;
+      position: relative;
+    }
+
+    .interaction-hint {
+      position: absolute;
+      top: 5px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    /* 1. La Casa / Ventana */
+    .house-interactive {
+      width: 140px;
+      height: 130px;
+      position: relative;
+      cursor: pointer;
+    }
+    .roof {
+      width: 0;
+      height: 0;
+      border-left: 70px solid transparent;
+      border-right: 70px solid transparent;
+      border-bottom: 45px solid #2d3748;
+    }
+    .wall {
+      width: 120px;
+      height: 85px;
+      background: #1a202c;
+      margin: 0 auto;
+      position: relative;
+      border: 1px solid #4a5568;
+      border-top: none;
+    }
+    .window-frame {
+      width: 44px;
+      height: 50px;
+      background: #0f172a;
+      border: 2px solid #718096;
+      position: absolute;
+      top: 15px;
+      left: 38px;
+      overflow: hidden;
+      display: flex;
+    }
+    .shutter {
+      width: 50%;
+      height: 100%;
+      background: #2d3748;
+      border: 1px solid #4a5568;
+      transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .shutter.left { transform-origin: left; }
+    .shutter.right { transform-origin: right; }
+    .house-interactive.open .shutter.left { transform: rotateY(-140deg); }
+    .house-interactive.open .shutter.right { transform: rotateY(140deg); }
+    .window-light {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, #fef08a 0%, #ca8a04 100%);
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      box-shadow: 0 0 25px #fef08a;
+    }
+    .house-interactive.open .window-light { opacity: 0.85; }
+
+    /* 2. Piano Interactivo */
+    .piano-container {
+      display: flex;
+      gap: 4px;
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .key {
+      width: 32px;
+      height: 100px;
+      background: #f8fafc;
+      border-radius: 0 0 4px 4px;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.1s;
+      position: relative;
+    }
+    .key:active, .key.active {
+      background: #cbd5e1;
+      transform: translateY(3px);
+    }
+    .key.black {
+      width: 20px;
+      height: 60px;
+      background: #090d16;
+      margin: 0 -12px;
+      z-index: 2;
+      border-radius: 0 0 3px 3px;
+    }
+    .key.black:active, .key.black.active {
+      background: #1e293b;
+    }
+
+    /* 3. Carta sobre */
+    .envelope-container {
+      width: 140px;
+      height: 95px;
+      background: #1e293b;
+      border-radius: 6px;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid #475569;
+      perspective: 600px;
+    }
+    .flap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      border-left: 70px solid transparent;
+      border-right: 70px solid transparent;
+      border-top: 50px solid #334155;
+      transform-origin: top;
+      transition: transform 0.6s ease;
+      z-index: 3;
+    }
+    .envelope-container.open .flap {
+      transform: rotateX(180deg);
+      z-index: 1;
+    }
+    .letter {
+      position: absolute;
+      bottom: 8px;
+      left: 15px;
+      width: 110px;
+      height: 75px;
+      background: #f8fafc;
+      border-radius: 4px;
+      transition: transform 0.6s ease;
+      padding: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .letter-line {
+      height: 3px;
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .envelope-container.open .letter {
+      transform: translateY(-35px);
+    }
+
+    /* 4. Reloj de Arena */
+    .hourglass {
+      width: 50px;
+      height: 90px;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.8s ease;
+    }
+    .glass-top, .glass-bottom {
+      width: 50px;
+      height: 40px;
+      border: 2px solid #94a3b8;
+      position: absolute;
+      overflow: hidden;
+    }
+    .glass-top {
+      top: 0;
+      border-radius: 25px 25px 5px 5px;
+      border-bottom: none;
+    }
+    .glass-bottom {
+      bottom: 0;
+      border-radius: 5px 5px 25px 25px;
+      border-top: none;
+    }
+    .sand-top {
+      width: 100%;
+      height: 100%;
+      background: var(--accent-gold);
+      position: absolute;
+      bottom: 0;
+      transition: height 3s linear;
+    }
+    .sand-bottom {
+      width: 100%;
+      height: 0%;
+      background: var(--accent-gold);
+      position: absolute;
+      bottom: 0;
+      transition: height 3s linear;
+    }
+    .hourglass.flipped {
+      transform: rotate(180deg);
+    }
+
+    /* Botón de Audio Ambient */
+    .audio-btn {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      z-index: 10;
+      background: rgba(18, 22, 32, 0.8);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s;
+    }
+    .audio-btn:hover {
+      background: var(--accent-gold);
+      color: var(--bg-color);
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <button class="audio-btn" id="audioToggle">🔊 Música Ambiental</button>
+
+  <div class="container">
+    <header>
+      <h1>Anatomía de la Soledad</h1>
+      <div class="subtitle">Poema Interactivo</div>
+    </header>
+
+    <!-- Estrofa 1 -->
+    <div class="stanza-card" id="stanza1">
+      <div class="poem-lines">
+        <p>Un faro de piedra erigido tierra adentro,</p>
+        <p>que proyecta su haz sobre un mar de polvo.</p>
+        <p>La sombra que aprende a sentarse a la mesa</p>
+        <p>y sirve dos tazas para un solo sorbo.</p>
+      </div>
+      <div class="interaction-area">
+        <span class="interaction-hint">Haz clic en la ventana para encender la luz</span>
+        <div class="house-interactive" id="house">
+          <div class="roof"></div>
+          <div class="wall">
+            <div class="window-frame">
+              <div class="window-light"></div>
+              <div class="shutter left"></div>
+              <div class="shutter right"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estrofa 2 -->
+    <div class="stanza-card" id="stanza2">
+      <div class="poem-lines">
+        <p>Es un marco de madera que abraza el vacío,</p>
+        <p>un piano cerrado que ensaya el acorde del viento,</p>
+        <p>la huella de un ave grabada en la nieve</p>
+        <p>que nadie rescata del blanco silencio.</p>
+      </div>
+      <div class="interaction-area">
+        <span class="interaction-hint">Toca el piano del viento</span>
+        <div class="piano-container">
+          <div class="key" data-note="261.63"></div>
+          <div class="key black" data-note="277.18"></div>
+          <div class="key" data-note="293.66"></div>
+          <div class="key black" data-note="311.13"></div>
+          <div class="key" data-note="329.63"></div>
+          <div class="key" data-note="349.23"></div>
+          <div class="key black" data-note="369.99"></div>
+          <div class="key" data-note="392.00"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estrofa 3 -->
+    <div class="stanza-card" id="stanza3">
+      <div class="poem-lines">
+        <p>Un satélite ciego girando en su órbita,</p>
+        <p>enviando señales a un cosmos sin mapa.</p>
+        <p>La carta guardada en un sobre sin sello,</p>
+        <p>el agua que olvida la forma que la atrapa.</p>
+      </div>
+      <div class="interaction-area">
+        <span class="interaction-hint">Toca para revelar la carta no enviada</span>
+        <div class="envelope-container" id="envelope">
+          <div class="flap"></div>
+          <div class="letter">
+            <div class="letter-line" style="width: 80%;"></div>
+            <div class="letter-line" style="width: 60%;"></div>
+            <div class="letter-line" style="width: 90%;"></div>
+            <div class="letter-line" style="width: 40%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estrofa 4 -->
+    <div class="stanza-card" id="stanza4">
+      <div class="poem-lines">
+        <p>Un reloj de arena donde cada grano cae</p>
+        <p>sin hacer un ruido en la noche infinita,</p>
+        <p>un teatro sin público con la luz encendida</p>
+        <p>donde la memoria su obra repite.</p>
+      </div>
+      <div class="interaction-area">
+        <span class="interaction-hint">Haz clic para voltear el tiempo</span>
+        <div class="hourglass" id="hourglass">
+          <div class="glass-top">
+            <div class="sand-top" id="sandTop"></div>
+          </div>
+          <div class="glass-bottom">
+            <div class="sand-bottom" id="sandBottom"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Canvas Ambiental (Polvo de luz y Nieve)
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let particles = [];
+    const particleCount = 70;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedY = Math.random() * 0.4 + 0.1;
+        this.speedX = (Math.random() - 0.5) * 0.2;
+        this.opacity = Math.random() * 0.5 + 0.1;
+      }
+
+      update() {
+        this.y += this.speedY;
+        this.x += this.speedX;
+
+        if (this.y > canvas.height) {
+          this.y = 0;
+          this.x = Math.random() * canvas.width;
+        }
+      }
+
+      draw() {
+        ctx.fillStyle = `rgba(201, 160, 99, ${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+
+    function animateCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animateCanvas);
+    }
+    animateCanvas();
+
+    // Revelado con Scroll (Observer)
+    const cards = document.querySelectorAll('.stanza-card');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.3 });
+
+    cards.forEach(card => observer.observe(card));
+
+    // Interacción 1: Casa
+    const house = document.getElementById('house');
+    house.addEventListener('click', () => {
+      house.classList.toggle('open');
+    });
+
+    // Interacción 2: Piano y Audio Web API
+    let audioCtx = null;
+    function playNote(freq) {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.5);
+    }
+
+    document.querySelectorAll('.key').forEach(key => {
+      key.addEventListener('click', () => {
+        const freq = parseFloat(key.getAttribute('data-note'));
+        playNote(freq);
+        key.classList.add('active');
+        setTimeout(() => key.classList.remove('active'), 200);
+      });
+    });
+
+    // Interacción 3: Sobre de carta
+    const envelope = document.getElementById('envelope');
+    envelope.addEventListener('click', () => {
+      envelope.classList.toggle('open');
+    });
+
+    // Interacción 4: Reloj de arena
+    const hourglass = document.getElementById('hourglass');
+    const sandTop = document.getElementById('sandTop');
+    const sandBottom = document.getElementById('sandBottom');
+    let isFlipped = false;
+
+    hourglass.addEventListener('click', () => {
+      isFlipped = !isFlipped;
+      hourglass.classList.toggle('flipped', isFlipped);
+
+      if (isFlipped) {
+        sandTop.style.height = '0%';
+        sandBottom.style.height = '100%';
+      } else {
+        sandTop.style.height = '100%';
+        sandBottom.style.height = '0%';
+      }
+    });
+
+    // Audio Sintético de Fondo Melancólico
+    let isPlayingAudio = false;
+    let ambientOsc = null;
+    let ambientGain = null;
+
+    document.getElementById('audioToggle').addEventListener('click', () => {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (!isPlayingAudio) {
+        ambientOsc = audioCtx.createOscillator();
+        ambientGain = audioCtx.createGain();
+
+        ambientOsc.type = 'triangle';
+        ambientOsc.frequency.setValueAtTime(110, audioCtx.currentTime); // La2
+
+        ambientGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+        ambientGain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 3);
+
+        ambientOsc.connect(ambientGain);
+        ambientGain.connect(audioCtx.destination);
+
+        ambientOsc.start();
+        isPlayingAudio = true;
+        document.getElementById('audioToggle').innerText = '🔇 Silenciar Música';
+      } else {
+        if (ambientGain) {
+          ambientGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+          setTimeout(() => {
+            ambientOsc.stop();
+            isPlayingAudio = false;
+            document.getElementById('audioToggle').innerText = '🔊 Música Ambiental';
+          }, 1000);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

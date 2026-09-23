@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>El Eco de la Sombra - Novela Interactiva</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@500;700&display=swap');
+
+    :root {
+      --bg-color: #050507;
+      --card-bg: rgba(12, 14, 20, 0.85);
+      --accent-blood: #8b0000;
+      --accent-neon: #38bdf8;
+      --accent-gold: #d4af37;
+      --text-main: #cbd5e1;
+      --text-muted: #64748b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Courier Prime', monospace;
+      overflow-x: hidden;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Canvas para Lluvia y Truenos */
+    #fx-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Controles Superiores Móviles */
+    .top-bar {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      left: 15px;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .btn-control {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--text-muted);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-family: 'Courier Prime', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      pointer-events: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .btn-control.active {
+      border-color: var(--accent-neon);
+      color: var(--accent-neon);
+    }
+
+    /* Contenedor Principal */
+    .container {
+      position: relative;
+      z-index: 2;
+      max-width: 650px;
+      margin: 0 auto;
+      padding: 80px 16px 120px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.8rem;
+      color: #f1f5f9;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Tarjetas de Capítulo */
+    .chapter-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      border-radius: 12px;
+      padding: 24px 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      display: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .chapter-card.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .chapter-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.2rem;
+      color: var(--accent-gold);
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+      padding-bottom: 8px;
+    }
+
+    .story-text {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+      margin-bottom: 24px;
+      white-space: pre-line;
+    }
+
+    /* Caja de Acertijo */
+    .riddle-box {
+      background: rgba(5, 5, 7, 0.6);
+      border: 1px dashed var(--accent-neon);
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .riddle-prompt {
+      font-size: 0.9rem;
+      color: var(--accent-neon);
+      margin-bottom: 12px;
+      font-weight: bold;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--text-muted);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: #fff;
+      font-family: 'Courier Prime', monospace;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent-neon);
+    }
+
+    .btn-submit {
+      background: var(--accent-neon);
+      color: #050507;
+      border: none;
+      padding: 0 16px;
+      border-radius: 6px;
+      font-family: 'Cinzel', serif;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .error-msg {
+      color: #f87171;
+      font-size: 0.8rem;
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* Indicador de Capítulo Completado */
+    .solved-badge {
+      text-align: center;
+      color: #34d399;
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      margin-top: 15px;
+      padding: 8px;
+      background: rgba(52, 211, 153, 0.1);
+      border-radius: 6px;
+      display: none;
+    }
+
+    /* Menú Selector de Capítulos */
+    .chapter-selector {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 25px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+    }
+    .dot.unlocked { opacity: 0.8; }
+    .dot.current { background: var(--accent-neon); opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <canvas id="fx-canvas"></canvas>
+
+  <div class="top-bar">
+    <button class="btn-control" id="audioToggle">🔊 Audio Lluvia</button>
+    <button class="btn-control" id="weatherToggle">⚡ Clima</button>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1>El Eco de la Sombra</h1>
+      <div class="subtitle">Expediente Interactivo</div>
+    </header>
+
+    <div class="chapter-selector" id="dotNav">
+      <div class="dot current" data-chap="1"></div>
+      <div class="dot" data-chap="2"></div>
+      <div class="dot" data-chap="3"></div>
+    </div>
+
+    <!-- Capítulo 1 -->
+    <div class="chapter-card active" id="chap1">
+      <div class="chapter-title">Capítulo I: El Reloj Detenido</div>
+      <div class="story-text">La lluvia golpea los cristales de mi oficina en el cuarto piso. Sobre la caoba mojada reposa el cadáver de un reloj de bolsillo antiguo, detenido exactamente a una hora imposible. 
+      
+      El asesino dejó una nota escrita con sangre fresca:
+      "El tiempo sangra hacia atrás cuando la verdad se oculta. Suma las manecillas del guardián silencioso."
+      
+      Al examinar el mecanismo interior del reloj, veo que las agujas están fijas en una hora específica de la tarde. Si descubres la hora correcta en formato de 12 horas, podrás seguir su rastro.</div>
+
+      <div class="riddle-box" id="riddle1">
+        <div class="riddle-prompt">Acertijo: ¿A qué hora se detuvo el reloj? (Ej: 3:15, 6:00, 9:45)</div>
+        <div class="input-group">
+          <input type="text" id="ans1" placeholder="Escribe tu respuesta..." autocomplete="off">
+          <button class="btn-submit" onclick="checkRiddle(1)">Verificar</button>
+        </div>
+        <div class="error-msg" id="err1">Respuesta incorrecta. Revisa las pistas del expediente.</div>
+      </div>
+      <div class="solved-badge" id="badge1">✓ Capítulo superado. Siguiente pista desbloqueada.</div>
+    </div>
+
+    <!-- Capítulo 2 -->
+    <div class="chapter-card" id="chap2">
+      <div class="chapter-title">Capítulo II: El Callejón de los Neones</div>
+      <div class="story-text">El neón azul parpadea sobre el asfalto mojado del callejón trasero. Sigo las gotas de sangre que caen desde la cornisa. El asesino conoce mis pasos; ha dejado una pintada fresca sobre la pared de ladrillo rojo.
+      
+      Bajo la luz parpadeante, un acertijo numérico y cromático espera en la pared:
+      "Tengo tres luces que guían sin mirar: la primera avisa el alto, la segunda la espera y la tercera da la vida del camino. ¿Cuántas letras tiene en total la palabra de la luz que prohíbe avanzar?"</div>
+
+      <div class="riddle-box" id="riddle2">
+        <div class="riddle-prompt">Acertijo: Número de letras de la luz que prohíbe avanzar.</div>
+        <div class="input-group">
+          <input type="text" id="ans2" placeholder="Escribe el número o palabra..." autocomplete="off">
+          <button class="btn-submit" onclick="checkRiddle(2)">Verificar</button>
+        </div>
+        <div class="error-msg" id="err2">Incorrecto. Piensa en los colores del semáforo.</div>
+      </div>
+      <div class="solved-badge" id="badge2">✓ Acceso concedido al archivo final.</div>
+    </div>
+
+    <!-- Capítulo 3 -->
+    <div class="chapter-card" id="chap3">
+      <div class="chapter-title">Capítulo III: La Revelación</div>
+      <div class="story-text">La puerta del viejo almacén cruje bajo la tormenta eléctrica. El reflejo de los relámpagos ilumina una mesa central con un sobre abierto dirigido a mí. 
+      
+      La sombra detrás del escritorio sonríe. El caso nunca fue sobre atraparlo; era una prueba para ver si recordaba quién encendió la primera cerilla aquella noche de invierno hace diez años. 
+      
+      Has llegado al final del expediente. La sombra se funde con la lluvia. Fin del primer expediente.</div>
+      <div class="solved-badge" style="display:block; background: rgba(56, 189, 248, 0.1); color: var(--accent-neon);">★ Expediente Concluido con Éxito ★</div>
+    </div>
+
+  </div>
+
+  <script>
+    // Canvas Dinámico de Lluvia y Relámpagos
+    const canvas = document.getElementById('fx-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    let drops = [];
+    const dropCount = 90;
+    for(let i=0; i<dropCount; i++) {
+      drops.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        length: Math.random() * 20 + 10,
+        speed: Math.random() * 8 + 6,
+        opacity: Math.random() * 0.4 + 0.1
+      });
+    }
+
+    let lightningAlpha = 0;
+    function triggerLightning() {
+      lightningAlpha = 0.8;
+      setTimeout(() => lightningAlpha = 0.2, 50);
+      setTimeout(() => lightningAlpha = 0.6, 120);
+      setTimeout(() => lightningAlpha = 0, 300);
+    }
+
+    function animateFX() {
+      ctx.clearRect(0,0,width,height);
+
+      // Relámpago ambiental
+      if (lightningAlpha > 0) {
+        ctx.fillStyle = `rgba(186, 230, 253, ${lightningAlpha})`;
+        ctx.fillRect(0,0,width,height);
+      }
+
+      // Lluvia
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for(let d of drops) {
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - 1, d.y + d.length);
+        d.y += d.speed;
+        d.x -= 0.5;
+        if(d.y > height) {
+          d.y = -20;
+          d.x = Math.random() * width;
+        }
+      }
+      ctx.stroke();
+
+      requestAnimationFrame(animateFX);
+    }
+    animateFX();
+
+    // Web Audio API: Sonido de Lluvia Sintética y Truenos
+    let audioCtx = null;
+    let isPlayingAudio = false;
+    let rainNode = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    document.getElementById('audioToggle').addEventListener('click', () => {
+      initAudio();
+      isPlayingAudio = !isPlayingAudio;
+      const btn = document.getElementById('audioToggle');
+
+      if (isPlayingAudio) {
+        // Generador de ruido rosa/blanco filtrado para simular lluvia
+        const bufferSize = 2 * audioCtx.sampleRate;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        rainNode = audioCtx.createBufferSource();
+        rainNode.buffer = noiseBuffer;
+        rainNode.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+
+        rainNode.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        rainNode.start();
+        btn.classList.add('active');
+        btn.innerText = '🔇 Silenciar Lluvia';
+      } else {
+        if (rainNode) rainNode.stop();
+        btn.classList.remove('active');
+        btn.innerText = '🔊 Audio Lluvia';
+      }
+    });
+
+    document.getElementById('weatherToggle').addEventListener('click', () => {
+      initAudio();
+      triggerLightning();
+    });
+
+    // Lógica de Capítulos y Acertijos
+    let unlockedChapter = 1;
+
+    function checkRiddle(chap) {
+      initAudio();
+      const input = document.getElementById('ans' + chap).value.trim().toLowerCase();
+      const err = document.getElementById('err' + chap);
+      const badge = document.getElementById('badge' + chap);
+      const riddleBox = document.getElementById('riddle' + chap);
+
+      let correct = false;
+      if (chap === 1) {
+        // Respuestas válidas para el reloj (ej: 3:15, 3 y cuarto, etc.)
+        if (input.includes('3:15') || input.includes('03:15') || input === '3') correct = true;
+      } else if (chap === 2) {
+        // "rojo" tiene 4 letras o el número 4
+        if (input.includes('4') || input.includes('cuatro') || input.includes('rojo')) correct = true;
+      }
+
+      if (correct) {
+        err.style.display = 'none';
+        badge.style.display = 'block';
+        riddleBox.style.opacity = '0.7';
+        
+        unlockedChapter = chap + 1;
+        updateDots();
+
+        setTimeout(() => {
+          if (chap < 3) {
+            switchChapter(chap + 1);
+          }
+        }, 1200);
+      } else {
+        err.style.display = 'block';
+      }
+    }
+
+    function switchChapter(chapNum) {
+      if (chapNum > unlockedChapter) return;
+      document.querySelectorAll('.chapter-card').forEach(card => card.classList.remove('active'));
+      document.getElementById('chap' + chapNum).classList.add('active');
+      
+      document.querySelectorAll('.dot').forEach((dot, idx) => {
+        dot.classList.toggle('current', idx + 1 === chapNum);
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateDots() {
+      document.querySelectorAll('.dot').forEach((dot, idx) => {
+        if (idx + 1 <= unlockedChapter) {
+          dot.classList.add('unlocked');
+        }
+        if (idx + 1 === unlockedChapter) {
+          dot.classList.add('current');
+        }
+      });
+    }
+
+    document.querySelectorAll('.dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const c = parseInt(dot.getAttribute('data-chap'));
+        if (c <= unlockedChapter) switchChapter(c);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca de acordes de guitarra</title>
+<style>
+  :root{
+    --f1: #f4c430; /* índice */
+    --f2: #4caf50; /* medio */
+    --f3: #2196f3; /* anular */
+    --f4: #e53935; /* meñique */
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body{
+    margin: 0; min-height: 100%;
+    background: linear-gradient(180deg, #1c1712, #0f0c09);
+    color: #f0e9df;
+    font-family: 'Trebuchet MS', Arial, sans-serif;
+    padding: 18px 12px 40px;
+  }
+  h1{ text-align: center; font-size: clamp(1.2rem, 5vw, 1.7rem); margin: 4px 0 2px; color: #f2d9b3; }
+  p.sub{ text-align: center; color: #baa48c; margin: 0 0 18px; font-size: 0.85rem; }
+
+  .wrap{ max-width: 780px; margin: 0 auto; }
+
+  .fingers-panel{
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 12px;
+  }
+  .finger-item{ display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .finger-swatch{
+    width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-weight: bold; color: #1a1a1a;
+  }
+  .finger-swatch.selected{ border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.25); }
+  .finger-item span{ font-size: 0.72rem; color: #cbb99e; }
+  .finger-item input[type=color]{ width: 34px; height: 22px; border: none; background: none; cursor: pointer; }
+
+  .mode-toggle{ display: flex; justify-content: center; gap: 8px; margin-bottom: 18px; }
+  .mode-btn{
+    padding: 8px 18px; border-radius: 30px; border: 1px solid #6b5236; background: transparent; color: #e8dcc8;
+    cursor: pointer; font-size: 0.9rem;
+  }
+  .mode-btn.active{ background: #8a5a34; color: #fff; }
+
+  .panel{ display: none; }
+  .panel.show{ display: block; }
+
+  .chord-group{ margin-bottom: 10px; }
+  .chord-group h3{ text-align: center; font-size: 0.8rem; color: #baa48c; margin: 10px 0 6px; font-weight: normal; }
+  .chord-list{ display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chord-btn{
+    padding: 8px 16px; border-radius: 8px; border: 1px solid #6b5236; background: rgba(255,255,255,0.05);
+    color: #f0e9df; cursor: pointer; font-size: 0.95rem; min-width: 48px;
+  }
+  .chord-btn.active{ background: #8a5a34; color: #fff; }
+  .sharps-note{ text-align: center; color: #8a7a63; font-size: 0.72rem; margin: -2px 0 14px; }
+
+  .diagram-area{ display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 16px; }
+  .chord-title{ font-size: 1.3rem; color: #f2d9b3; min-height: 1.6rem; }
+
+  .fretboard{ position: relative; width: 260px; height: 300px; touch-action: manipulation; }
+  .nut{ position: absolute; left: 6%; right: 6%; top: 30px; height: 5px; background: #f0e9df; border-radius: 2px; }
+  .fretline{ position: absolute; left: 6%; right: 6%; height: 1px; background: rgba(240,233,223,0.35); }
+  .stringline{ position: absolute; top: 30px; bottom: 0; width: 2px; background: rgba(240,233,223,0.5); }
+  .marker{
+    position: absolute; top: 4px; width: 22px; height: 22px; margin-left: -11px;
+    display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #f0e9df;
+    border: 1px solid rgba(240,233,223,0.6); border-radius: 50%; cursor: pointer;
+  }
+  .base-fret-label{ position: absolute; left: -6px; font-size: 0.75rem; color: #cbb99e; font-weight: bold; }
+  .dot{
+    position: absolute; width: 26px; height: 26px; margin-left: -13px; margin-top: -13px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: bold; color: #1a1a1a; cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4); border: 3px solid transparent;
+  }
+  .dot.ok{ border-color: #4caf50; }
+  .dot.bad{ border-color: #e53935; }
+  .barre{
+    position: absolute; height: 24px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: bold; color: #1a1a1a;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+  }
+  .fretslot{
+    position: absolute; width: 30px; height: 30px; margin-left: -15px; margin-top: -15px;
+    border-radius: 50%; cursor: pointer;
+  }
+
+  .actions{ display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button.action{
+    padding: 10px 18px; border-radius: 30px; border: none; background: #b5772f; color: #fff;
+    font-size: 0.9rem; cursor: pointer;
+  }
+  button.action.secondary{ background: transparent; border: 1px solid #b5772f; color: #f2d9b3; }
+
+  .feedback{ min-height: 1.4rem; font-size: 0.95rem; text-align: center; }
+  .feedback.ok{ color: #7fd68a; }
+  .feedback.bad{ color: #e88a86; }
+
+  .hint-text{ text-align: center; color: #baa48c; font-size: 0.8rem; max-width: 440px; margin: 0 auto 10px; }
+
+  .subtoggle{ display: flex; justify-content: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .subtoggle button{
+    padding: 6px 14px; border-radius: 20px; border: 1px solid #6b5236; background: transparent;
+    color: #e8dcc8; cursor: pointer; font-size: 0.82rem;
+  }
+  .subtoggle button.active{ background: #6b5236; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Biblioteca de acordes de guitarra</h1>
+
+  <div class="fingers-panel" id="fingersPanel"></div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="biblioteca">📖 Biblioteca</button>
+    <button class="mode-btn" data-mode="practica">🎯 Práctica</button>
+  </div>
+
+  <div class="panel show" id="panelBiblioteca">
+    <div class="chord-group">
+      <h3>Mayores</h3>
+      <div class="chord-list" id="listMajors"></div>
+    </div>
+    <div class="chord-group">
+      <h3>Menores</h3>
+      <div class="chord-list" id="listMinors"></div>
+    </div>
+    <div class="chord-group">
+      <h3>Sostenidos/bemoles mayores</h3>
+      <div class="chord-list" id="listSharpMajors"></div>
+    </div>
+    <div class="chord-group">
+      <h3>Sostenidos/bemoles menores</h3>
+      <div class="chord-list" id="listSharpMinors"></div>
+    </div>
+
+    <div class="diagram-area">
+      <div class="chord-title" id="libChordTitle">C</div>
+      <div class="fretboard" id="libFretboard"></div>
+      <div class="actions">
+        <button class="action" id="libPlayBtn">🔊 Reproducir acorde</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panelPractica">
+    <div class="subtoggle" id="showNameToggle">
+      <button data-show="name" class="active">🔤 Ver nombre del acorde</button>
+      <button data-show="hidden">🎧 Adivinar a ciegas</button>
+    </div>
+    <p class="hint-text">Selecciona un dedo arriba y toca las cuerdas donde crees que van los dedos. Toca el círculo sobre una cuerda (encima del diapasón) para marcarla como abierta (O) o silenciada (X).</p>
+    <div class="diagram-area">
+      <div class="chord-title" id="pracChordTitle">C</div>
+      <div class="fretboard" id="pracFretboard"></div>
+      <div class="feedback" id="pracFeedback"></div>
+      <div class="actions">
+        <button class="action" id="checkBtn">✔️ Comprobar</button>
+        <button class="action secondary" id="playCorrectBtn">🔊 Escuchar acorde</button>
+        <button class="action secondary" id="nextBtn">🔀 Otro acorde</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const OPEN_FREQ = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
+  const NUM_FRETS = 5;
+  const NOTE_SEMITONE = { C:0,'C#':1, D:2,'D#':3, E:4, F:5,'F#':6, G:7,'G#':8, A:9,'A#':10, B:11 };
+
+  function semitoneDiff(fromNote, toNote){
+    return ((NOTE_SEMITONE[toNote] - NOTE_SEMITONE[fromNote]) + 12) % 12;
+  }
+
+  function eShapeMajor(root){
+    const R = semitoneDiff('E', root);
+    if (R === 0) return { baseFret:1, strings:[{fret:0},{fret:2,finger:2},{fret:2,finger:3},{fret:1,finger:1},{fret:0},{fret:0}] };
+    return {
+      baseFret: R,
+      strings: [ {fret:R,finger:1}, {fret:R+2,finger:3}, {fret:R+2,finger:4}, {fret:R+1,finger:2}, {fret:R,finger:1}, {fret:R,finger:1} ],
+      barre: [ {fret:R, finger:1, from:0, to:5} ]
+    };
+  }
+  function eShapeMinor(root){
+    const R = semitoneDiff('E', root);
+    if (R === 0) return { baseFret:1, strings:[{fret:0},{fret:2,finger:2},{fret:2,finger:3},{fret:0},{fret:0},{fret:0}] };
+    return {
+      baseFret: R,
+      strings: [ {fret:R,finger:1}, {fret:R+2,finger:3}, {fret:R+2,finger:4}, {fret:R,finger:1}, {fret:R,finger:1}, {fret:R,finger:1} ],
+      barre: [ {fret:R, finger:1, from:0, to:5} ]
+    };
+  }
+  function aShapeMajor(root){
+    const R = semitoneDiff('A', root);
+    if (R === 0) return { baseFret:1, strings:[{fret:-1},{fret:0},{fret:2,finger:1},{fret:2,finger:2},{fret:2,finger:3},{fret:0}] };
+    return {
+      baseFret: R,
+      strings: [ {fret:-1}, {fret:R,finger:1}, {fret:R+2,finger:3}, {fret:R+2,finger:3}, {fret:R+2,finger:3}, {fret:R,finger:1} ],
+      barre: [ {fret:R, finger:1, from:1, to:5}, {fret:R+2, finger:3, from:2, to:4} ]
+    };
+  }
+  function aShapeMinor(root){
+    const R = semitoneDiff('A', root);
+    if (R === 0) return { baseFret:1, strings:[{fret:-1},{fret:0},{fret:2,finger:2},{fret:2,finger:3},{fret:1,finger:1},{fret:0}] };
+    return {
+      baseFret: R,
+      strings: [ {fret:-1}, {fret:R,finger:1}, {fret:R+2,finger:3}, {fret:R+2,finger:4}, {fret:R+1,finger:2}, {fret:R,finger:1} ],
+      barre: [ {fret:R, finger:1, from:1, to:5} ]
+    };
+  }
+
+  const CHORDS = {
+    'C': { baseFret:1, strings:[{fret:-1},{fret:3,finger:3},{fret:2,finger:2},{fret:0},{fret:1,finger:1},{fret:0}] },
+    'D': { baseFret:1, strings:[{fret:-1},{fret:0},{fret:0},{fret:2,finger:1},{fret:3,finger:3},{fret:2,finger:2}] },
+    'G': { baseFret:1, strings:[{fret:3,finger:2},{fret:2,finger:1},{fret:0},{fret:0},{fret:0},{fret:3,finger:3}] },
+    'E': eShapeMajor('E'),
+    'A': aShapeMajor('A'),
+    'F': eShapeMajor('F'),
+    'F#': eShapeMajor('F#'),
+    'G#': eShapeMajor('G#'),
+    'C#': aShapeMajor('C#'),
+    'D#': aShapeMajor('D#'),
+    'A#': aShapeMajor('A#'),
+    'B': aShapeMajor('B'),
+
+    'Dm': { baseFret:1, strings:[{fret:-1},{fret:-1},{fret:0},{fret:2,finger:3},{fret:3,finger:4},{fret:1,finger:1}] },
+    'Em': eShapeMinor('E'),
+    'Am': aShapeMinor('A'),
+    'Fm': eShapeMinor('F'),
+    'F#m': eShapeMinor('F#'),
+    'Gm': eShapeMinor('G'),
+    'G#m': eShapeMinor('G#'),
+    'C#m': aShapeMinor('C#'),
+    'D#m': aShapeMinor('D#'),
+    'A#m': aShapeMinor('A#'),
+    'Bm': aShapeMinor('B')
+  };
+
+  const MAJORS_NATURAL = ['C','D','E','F','G','A','B'];
+  const MINORS_NATURAL = ['Cm','Dm','Em','Fm','Gm','Am','Bm'];
+  const SHARPS_MAJOR = ['C#','D#','F#','G#','A#'];
+  const SHARPS_MINOR = ['C#m','D#m','F#m','G#m','A#m'];
+  const ALL_CHORD_NAMES = [...MAJORS_NATURAL, ...MINORS_NATURAL, ...SHARPS_MAJOR, ...SHARPS_MINOR];
+
+  function freqForString(stringIndex, fret){
+    return OPEN_FREQ[stringIndex] * Math.pow(2, fret / 12);
+  }
+
+  let audioCtx = null;
+  function getCtx(){
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function pluck(frequency, volume = 0.45){
+    const ctx = getCtx();
+    const sampleRate = ctx.sampleRate;
+    const N = Math.max(2, Math.round(sampleRate / frequency));
+    const ring = new Float32Array(N);
+    for (let i = 0; i < N; i++) ring[i] = Math.random() * 2 - 1;
+    let idx = 0;
+
+    const processor = ctx.createScriptProcessor(1024, 1, 1);
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = volume;
+    processor.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    let samplesPlayed = 0;
+    const maxSamples = sampleRate * 2.5;
+    const decay = 0.994;
+
+    processor.onaudioprocess = (e) => {
+      const out = e.outputBuffer.getChannelData(0);
+      for (let i = 0; i < out.length; i++){
+        const current = ring[idx];
+        const next = ring[(idx + 1) % N];
+        ring[idx] = decay * 0.5 * (current + next);
+        out[i] = current;
+        idx = (idx + 1) % N;
+        samplesPlayed++;
+      }
+      if (samplesPlayed > maxSamples){
+        processor.disconnect();
+        gainNode.disconnect();
+        processor.onaudioprocess = null;
+      }
+    };
+  }
+
+  function playChord(chordObj){
+    getCtx();
+    chordObj.strings.forEach((s, i) => {
+      if (s.fret === -1) return;
+      const freq = freqForString(i, s.fret);
+      setTimeout(() => pluck(freq), i * 45);
+    });
+  }
+
+  const FINGERS = [
+    { id: 1, label: 'Índice',  varName: '--f1' },
+    { id: 2, label: 'Medio',   varName: '--f2' },
+    { id: 3, label: 'Anular',  varName: '--f3' },
+    { id: 4, label: 'Meñique', varName: '--f4' }
+  ];
+  let selectedFinger = 1;
+
+  const fingersPanel = document.getElementById('fingersPanel');
+  FINGERS.forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'finger-item';
+    const currentColor = getComputedStyle(document.documentElement).getPropertyValue(f.varName).trim();
+    item.innerHTML = `
+      <div class="finger-swatch ${f.id === selectedFinger ? 'selected' : ''}" data-finger="${f.id}" style="background:${currentColor}">${f.id}</div>
+      <span>${f.label}</span>
+      <input type="color" data-var="${f.varName}" value="${rgbToHex(currentColor)}">
+    `;
+    fingersPanel.appendChild(item);
+  });
+
+  function rgbToHex(color){
+    if (color.startsWith('#')) return color;
+    const m = color.match(/\d+/g);
+    if (!m) return '#ffffff';
+    return '#' + m.slice(0,3).map(n => (+n).toString(16).padStart(2,'0')).join('');
+  }
+
+  fingersPanel.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.finger-swatch');
+    if (!swatch) return;
+    selectedFinger = parseInt(swatch.dataset.finger, 10);
+    fingersPanel.querySelectorAll('.finger-swatch').forEach(s => s.classList.remove('selected'));
+    swatch.classList.add('selected');
+  });
+
+  fingersPanel.addEventListener('input', (e) => {
+    if (e.target.type !== 'color') return;
+    const varName = e.target.dataset.var;
+    document.documentElement.style.setProperty(varName, e.target.value);
+    const finger = FINGERS.find(f => f.varName === varName);
+    const swatch = fingersPanel.querySelector(`.finger-swatch[data-finger="${finger.id}"]`);
+    swatch.style.background = e.target.value;
+    renderFretboard(libFretboard, CHORDS[currentLibChord]);
+    if (currentPracticeChord) renderPracticeBoard();
+  });
+
+  function fingerColor(id){
+    return getComputedStyle(document.documentElement).getPropertyValue('--f' + id).trim();
+  }
+
+  function stringX(i){
+    const margin = 260 * 0.06;
+    return margin + i * ((260 - margin * 2) / 5);
+  }
+  function fretY(relFret){
+    const top = 30, bottom = 300, usableHeight = bottom - top;
+    return top + ((relFret - 0.5) / NUM_FRETS) * usableHeight;
+  }
+  function buildStaticLines(container){
+    container.innerHTML = '';
+    const nut = document.createElement('div');
+    nut.className = 'nut';
+    container.appendChild(nut);
+    const top = 30, bottom = 300, usableHeight = bottom - top;
+    for (let f = 1; f <= NUM_FRETS; f++){
+      const line = document.createElement('div');
+      line.className = 'fretline';
+      line.style.top = (top + (f / NUM_FRETS) * usableHeight) + 'px';
+      container.appendChild(line);
+    }
+    for (let s = 0; s < 6; s++){
+      const line = document.createElement('div');
+      line.className = 'stringline';
+      line.style.left = stringX(s) + 'px';
+      container.appendChild(line);
+    }
+  }
+
+  const libFretboard = document.getElementById('libFretboard');
+  const libChordTitle = document.getElementById('libChordTitle');
+  let currentLibChord = 'C';
+
+  const FLAT_EQUIV = { 'C#':'Db', 'D#':'Eb', 'F#':'Gb', 'G#':'Ab', 'A#':'Bb' };
+  function sharpFlatLabel(name){
+    const isMinor = name.endsWith('m');
+    const base = isMinor ? name.slice(0, -1) : name;
+    const flat = FLAT_EQUIV[base] + (isMinor ? 'm' : '');
+    return `${name}/${flat}`;
+  }
+
+  function fillChordButtons(containerId, names, labelFn){
+    const el = document.getElementById(containerId);
+    names.forEach(name => {
+      const btn = document.createElement('button');
+      btn.className = 'chord-btn' + (name === currentLibChord ? ' active' : '');
+      btn.textContent = labelFn ? labelFn(name) : name;
+      btn.dataset.chord = name;
+      el.appendChild(btn);
+    });
+  }
+  fillChordButtons('listMajors', MAJORS_NATURAL);
+  fillChordButtons('listMinors', MINORS_NATURAL);
+  fillChordButtons('listSharpMajors', SHARPS_MAJOR, sharpFlatLabel);
+  fillChordButtons('listSharpMinors', SHARPS_MINOR, sharpFlatLabel);
+
+  document.getElementById('panelBiblioteca').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chord-btn');
+    if (!btn) return;
+    currentLibChord = btn.dataset.chord;
+    document.querySelectorAll('#panelBiblioteca .chord-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    libChordTitle.textContent = currentLibChord;
+    renderFretboard(libFretboard, CHORDS[currentLibChord]);
+  });
+
+  document.getElementById('libPlayBtn').addEventListener('click', () => {
+    playChord(CHORDS[currentLibChord]);
+  });
+
+  function renderFretboard(container, chordObj){
+    buildStaticLines(container);
+
+    if (chordObj.baseFret > 1){
+      const label = document.createElement('div');
+      label.className = 'base-fret-label';
+      label.textContent = chordObj.baseFret + 'ª';
+      label.style.top = (fretY(1) - 8) + 'px';
+      container.appendChild(label);
+    }
+
+    (chordObj.barre || []).forEach(b => {
+      const relFret = b.fret - chordObj.baseFret + 1;
+      const bar = document.createElement('div');
+      bar.className = 'barre';
+      bar.style.left = stringX(b.from) + 'px';
+      bar.style.width = (stringX(b.to) - stringX(b.from)) + 'px';
+      bar.style.top = (fretY(relFret) - 12) + 'px';
+      bar.style.background = fingerColor(b.finger);
+      bar.textContent = b.finger;
+      container.appendChild(bar);
+    });
+
+    chordObj.strings.forEach((s, i) => {
+      const x = stringX(i);
+      if (s.fret === -1 || s.fret === 0){
+        const marker = document.createElement('div');
+        marker.className = 'marker';
+        marker.textContent = s.fret === -1 ? '✕' : 'O';
+        marker.style.left = x + 'px';
+        marker.style.color = s.fret === -1 ? '#e88a86' : '#7fd68a';
+        marker.style.borderColor = s.fret === -1 ? '#e88a86' : '#7fd68a';
+        container.appendChild(marker);
+      } else if (s.fret > 0) {
+        const relFret = s.fret - chordObj.baseFret + 1;
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.style.left = x + 'px';
+        dot.style.top = fretY(relFret) + 'px';
+        dot.style.background = fingerColor(s.finger);
+        dot.textContent = s.finger || '';
+        container.appendChild(dot);
+      }
+    });
+  }
+
+  renderFretboard(libFretboard, CHORDS[currentLibChord]);
+
+  const pracFretboard = document.getElementById('pracFretboard');
+  const pracChordTitle = document.getElementById('pracChordTitle');
+  const pracFeedback = document.getElementById('pracFeedback');
+
+  let practiceState = [null, null, null, null, null, null];
+  let currentPracticeChord = null;
+  let showChordName = true;
+  let revealCorrectness = false;
+
+  function newPracticeChord(){
+    currentPracticeChord = ALL_CHORD_NAMES[Math.floor(Math.random() * ALL_CHORD_NAMES.length)];
+    practiceState = [null, null, null, null, null, null];
+    revealCorrectness = false;
+    pracFeedback.textContent = '';
+    pracFeedback.className = 'feedback';
+    updatePracticeTitle();
+    renderPracticeBoard();
+  }
+
+  function updatePracticeTitle(){
+    pracChordTitle.textContent = showChordName ? currentPracticeChord : '¿Qué acorde es?';
+  }
+
+  document.getElementById('showNameToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#showNameToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    showChordName = btn.dataset.show === 'name';
+    updatePracticeTitle();
+  });
+
+  function renderPracticeBoard(){
+    buildStaticLines(pracFretboard);
+    const chordObj = CHORDS[currentPracticeChord];
+
+    if (chordObj.baseFret > 1){
+      const label = document.createElement('div');
+      label.className = 'base-fret-label';
+      label.textContent = chordObj.baseFret + 'ª';
+      label.style.top = (fretY(1) - 8) + 'px';
+      pracFretboard.appendChild(label);
+    }
+
+    for (let i = 0; i < 6; i++){
+      const marker = document.createElement('div');
+      marker.className = 'marker';
+      const st = practiceState[i];
+      marker.textContent = st === 0 ? 'O' : (st === -1 ? '✕' : '');
+      marker.style.left = stringX(i) + 'px';
+      marker.style.color = st === 0 ? '#7fd68a' : (st === -1 ? '#e88a86' : '#f0e9df');
+      marker.addEventListener('click', () => {
+        if (practiceState[i] === null) practiceState[i] = 0;
+        else if (practiceState[i] === 0) practiceState[i] = -1;
+        else practiceState[i] = null;
+        renderPracticeBoard();
+      });
+      pracFretboard.appendChild(marker);
+    }
+
+    for (let i = 0; i < 6; i++){
+      for (let f = 1; f <= NUM_FRETS; f++){
+        const slot = document.createElement('div');
+        slot.className = 'fretslot';
+        slot.style.left = stringX(i) + 'px';
+        slot.style.top = fretY(f) + 'px';
+        slot.addEventListener('click', () => {
+          const st = practiceState[i];
+          if (st && typeof st === 'object' && st.relFret === f){
+            practiceState[i] = null;
+          } else {
+            practiceState[i] = { relFret: f, finger: selectedFinger };
+          }
+          renderPracticeBoard();
+        });
+        pracFretboard.appendChild(slot);
+
+        const st = practiceState[i];
+        if (st && typeof st === 'object' && st.relFret === f){
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          dot.style.left = stringX(i) + 'px';
+          dot.style.top = fretY(f) + 'px';
+          dot.style.background = fingerColor(st.finger);
+          dot.textContent = st.finger;
+          if (revealCorrectness){
+            dot.classList.add(st.__ok ? 'ok' : 'bad');
+          }
+          pracFretboard.appendChild(dot);
+        }
+      }
+    }
+  }
+
+  document.getElementById('checkBtn').addEventListener('click', () => {
+    const chordObj = CHORDS[currentPracticeChord];
+    let allOk = true;
+    for (let i = 0; i < 6; i++){
+      const c = chordObj.strings[i];
+      const u = practiceState[i];
+      let ok = false;
+      if (c.fret <= 0){
+        ok = (u === c.fret);
+      } else {
+        const correctRel = c.fret - chordObj.baseFret + 1;
+        ok = !!(u && typeof u === 'object' && u.relFret === correctRel && u.finger === c.finger);
+        if (u && typeof u === 'object') u.__ok = ok;
+      }
+      if (!ok) allOk = false;
+    }
+    revealCorrectness = true;
+    renderPracticeBoard();
+    if (allOk){
+      pracFeedback.textContent = `¡Correcto! Este es el acorde de ${currentPracticeChord}.`;
+      pracFeedback.className = 'feedback ok';
+    } else {
+      pracFeedback.textContent = `Todavía no. Este era el acorde de ${currentPracticeChord} — revisa en rojo los puntos que fallaron.`;
+      pracFeedback.className = 'feedback bad';
+    }
+    showChordName = true;
+    updatePracticeTitle();
+  });
+
+  document.getElementById('playCorrectBtn').addEventListener('click', () => {
+    if (currentPracticeChord) playChord(CHORDS[currentPracticeChord]);
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', newPracticeChord);
+
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      document.getElementById('panelBiblioteca').classList.toggle('show', mode === 'biblioteca');
+      document.getElementById('panelPractica').classList.toggle('show', mode === 'practica');
+      if (mode === 'practica' && !currentPracticeChord) newPracticeChord();
+    });
+  });
+</script>
+
+</body>
+</html>

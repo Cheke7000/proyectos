@@ -1,0 +1,449 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  }
+
+/*VARIABLES*/
+
+:root {
+--bg: #05070b;
+
+--panel: #0b111a;
+
+--blue: #1683ff;
+
+--blue2: #35a8ff;
+
+--text: #f3f7fb;
+
+--muted: #94a3b8;
+
+--border: rgba(22, 131, 255, .25);
+}
+
+/*GENERAL*/
+
+body {
+min-height: 100vh;
+
+color: var(--text);
+
+font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+background:
+
+    radial-gradient(
+        circle at 50% -10%,
+        rgba(22, 131, 255, .16),
+        transparent 35%
+    ),
+
+    var(--bg);
+}
+
+/*HEADER*/
+
+.site-header {
+border-bottom:
+    1px solid rgba(255, 255, 255, .05);
+
+background:
+    rgba(5, 7, 11, .72);
+
+backdrop-filter:
+    blur(12px);
+}
+
+.header-inner {
+width:
+    min(1120px, 92%);
+
+margin:
+    auto;
+
+padding:
+    22px 0;
+
+display:
+    flex;
+
+align-items:
+    center;
+
+justify-content:
+    space-between;
+
+gap:
+    16px;
+}
+
+.brand {
+font-size:
+    1.18rem;
+
+font-weight:
+    800;
+
+color:
+    var(--text);
+
+text-decoration:
+    none;
+}
+
+.brand span {
+color:
+    var(--blue2);
+}
+
+/*BOTÓN PORTAFOLIO*/
+
+.portfolio-btn {
+color:
+    #fff;
+
+text-decoration:
+    none;
+
+border:
+    1px solid var(--border);
+
+background:
+    rgba(22, 131, 255, .08);
+
+padding:
+    9px 13px;
+
+border-radius:
+    9px;
+
+font-size:
+    .9rem;
+
+transition:
+    .25s ease;
+}
+
+.portfolio-btn:hover {
+transform:
+    translateY(-2px);
+
+background:
+    rgba(22, 131, 255, .17);
+
+border-color:
+    rgba(53, 168, 255, .7);
+}
+
+/*HERO*/
+
+main {
+width:
+    min(1120px, 92%);
+
+margin:
+    auto;
+}
+
+.hero {
+text-align:
+    center;
+
+padding:
+    68px 0 42px;
+}
+
+.eyebrow {
+font-size:
+    .75rem;
+
+letter-spacing:
+    3px;
+
+font-weight:
+    800;
+
+color:
+    var(--blue2);
+
+margin-bottom:
+    13px;
+}
+
+h1 {
+font-size:
+    clamp(2.6rem, 7vw, 4.6rem);
+
+line-height:
+    1;
+
+margin-bottom:
+    18px;
+}
+
+h1 span {
+color:
+    var(--blue2);
+}
+
+.hero p:last-child {
+max-width:
+    650px;
+
+margin:
+    auto;
+
+color:
+    var(--muted);
+
+line-height:
+    1.7;
+}
+
+/*GRID DE PROYECTOS*/
+
+.projects-grid {
+display:
+    grid;
+
+grid-template-columns:
+    repeat(
+        auto-fit,
+        minmax(270px, 1fr)
+    );
+
+gap:
+    20px;
+
+padding-bottom:
+    65px;
+}
+
+/*TARJETA*/
+
+.project-card {
+overflow:
+    hidden;
+
+border:
+    1px solid var(--border);
+
+border-radius:
+    16px;
+
+background:
+
+    linear-gradient(
+        145deg,
+        rgba(14, 23, 35, .97),
+        rgba(7, 11, 18, .97)
+    );
+
+box-shadow:
+    0 12px 35px rgba(0, 0, 0, .22);
+
+transition:
+    .25s ease;
+}
+
+.project-card:hover {
+transform:
+    translateY(-5px);
+
+border-color:
+    rgba(53, 168, 255, .55);
+}
+
+/*VISTA PREVIA*/
+
+.preview {
+height:
+    190px;
+
+background:
+    #020409;
+
+position:
+    relative;
+
+overflow:
+    hidden;
+
+border-bottom:
+    1px solid rgba(22, 131, 255, .18);
+
+}
+
+/*El iframe se reduce para que podamos ver una miniatura del proyecto.*/
+
+.preview iframe {
+width:
+    200%;
+
+height:
+    200%;
+
+border:
+    0;
+
+transform:
+    scale(.5);
+
+transform-origin:
+    0 0;
+
+background:
+    #fff;
+
+}
+
+/*CONTENIDO*/
+
+.card-content {
+padding:
+    19px 20px 21px;
+}
+
+.language {
+display:
+    inline-block;
+
+color:
+    var(--blue2);
+
+font-size:
+    .72rem;
+
+font-weight:
+    800;
+
+letter-spacing:
+    .7px;
+
+margin-bottom:
+    10px;
+}
+
+.card-content h2 {
+font-size:
+    1.05rem;
+
+line-height:
+    1.4;
+min-height:48px;
+margin-bottom:
+    16px;
+}
+
+
+/*BOTÓN VER PROYECTO*/
+
+
+.open-project {
+display:
+    inline-block;
+
+padding:
+    9px 12px;
+
+border-radius:
+    9px;
+
+color:
+    #fff;
+
+text-decoration:
+    none;
+
+font-size:
+    .86rem;
+
+border:
+    1px solid var(--border);
+
+background:
+    rgba(22, 131, 255, .08);
+
+transition:
+    .25s ease;
+}
+
+.open-project:hover {
+transform:
+    translateY(-2px);
+
+background:
+    rgba(22, 131, 255, .17);
+
+border-color:
+    rgba(53, 168, 255, .7);
+}
+
+/*FOOTER*/
+
+footer {
+text-align:
+    center;
+
+padding:
+    24px;
+
+color:
+    #64748b;
+
+border-top:
+    1px solid rgba(255, 255, 255, .05);
+
+font-size:
+    .85rem;
+}
+
+/*RESPONSIVE*/
+
+@media (max-width: 600px) {
+.header-inner {
+
+    padding:
+        18px 0;
+
+}
+
+
+.brand {
+
+    font-size:
+        1rem;
+
+}
+
+
+.portfolio-btn {
+
+    font-size:
+        .8rem;
+
+    padding:
+        8px 10px;
+
+}
+
+
+.hero {
+
+    padding-top:
+        50px;
+
+}
+
+
+.preview {
+
+    height:
+        175px;
+
+}
+}

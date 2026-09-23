@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Eco de la Sombra - Cuentos Interactivos Noir</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        noir: {
+                            950: '#040407',
+                            900: '#08080c',
+                            800: '#12121a',
+                            700: '#1e1e29',
+                            crimson: '#8b0000',
+                            brightCrimson: '#dc2626',
+                            neonRed: '#ff1e43',
+                            amberGold: '#d97706'
+                        }
+                    },
+                    fontFamily: {
+                        typewriter: ['Courier Prime', 'Courier', 'monospace'],
+                        noirTitle: ['Cinzel', 'Georgia', 'serif'],
+                        bodyText: ['Merriweather', 'Georgia', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+    
+    <!-- Custom Styles & Animations -->
+    <style>
+        body {
+            background-color: #08080c;
+            color: #d1d5db;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #040407;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a0808;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b0000;
+        }
+
+        /* Lightning Screen Flash */
+        .lightning-flash {
+            animation: flashBg 0.4s ease-out;
+        }
+        @keyframes flashBg {
+            0% { background-color: rgba(255, 255, 255, 0.85); }
+            15% { background-color: rgba(180, 210, 255, 0.4); }
+            30% { background-color: rgba(255, 255, 255, 0.6); }
+            100% { background-color: transparent; }
+        }
+
+        /* Blood Drip CSS Animation */
+        .blood-drip {
+            position: fixed;
+            top: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, rgba(139, 0, 0, 0.9), rgba(220, 38, 38, 0.6), transparent);
+            border-bottom-left-radius: 50%;
+            border-bottom-right-radius: 50%;
+            pointer-events: none;
+            z-index: 35;
+            animation: dripDown 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes dripDown {
+            0% { height: 0px; opacity: 1; }
+            70% { height: 180px; opacity: 0.8; }
+            100% { height: 260px; opacity: 0; }
+        }
+
+        /* Neon Glow Effect */
+        .neon-text-crimson {
+            text-shadow: 0 0 5px #8b0000, 0 0 10px #dc2626, 0 0 20px #ff1e43;
+        }
+        .neon-border {
+            box-shadow: 0 0 10px rgba(139, 0, 0, 0.5), inset 0 0 15px rgba(139, 0, 0, 0.3);
+        }
+
+        /* Typewriter Cursor */
+        .typewriter-cursor::after {
+            content: '|';
+            animation: blink 0.8s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Knife Blade Slash Overlay Animation */
+        .knife-slash {
+            position: fixed;
+            top: 50%;
+            left: -100%;
+            width: 200%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ffffff, #8b0000, transparent);
+            box-shadow: 0 0 15px #ffffff, 0 0 30px #dc2626;
+            transform: rotate(-15deg);
+            z-index: 40;
+            pointer-events: none;
+        }
+        .animate-slash {
+            animation: slashAnim 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+        @keyframes slashAnim {
+            0% { left: -100%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+    </style>
+</head>
+<body class="font-bodyText selection:bg-red-900 selection:text-white relative">
+
+    <!-- Background Canvas 1: Rain, Fog & Lightning -->
+    <canvas id="weatherCanvas" class="fixed inset-0 pointer-events-none z-0 w-full h-full"></canvas>
+
+    <!-- Background Canvas 2: Blood Splatters & Atmospheric Particle Overlay -->
+    <canvas id="bloodCanvas" class="fixed inset-0 pointer-events-none z-10 w-full h-full"></canvas>
+
+    <!-- Knife Slash Effect Container -->
+    <div id="knifeSlashEl" class="knife-slash"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-noir-950/85 backdrop-blur-md border-b border-red-950/40 px-4 py-3">
+        <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Brand / Title -->
+            <div class="flex items-center gap-3">
+                <span class="text-red-700 text-2xl font-black font-noirTitle tracking-widest uppercase flex items-center gap-2">
+                    <svg class="w-6 h-6 text-red-600 inline animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    El Eco de la Sombra
+                </span>
+                <span class="hidden sm:inline-block text-xs uppercase px-2 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-900/40 font-typewriter">
+                    Detective Noir
+                </span>
+            </div>
+
+            <!-- Chapter Navigation Selector & Ambient Controls -->
+            <div class="flex items-center gap-2 sm:gap-4 text-xs font-typewriter">
+                
+                <!-- Chapter Dropdown -->
+                <div class="relative">
+                    <select id="chapterSelect" class="bg-noir-900 text-gray-200 border border-red-900/50 rounded px-2 py-1.5 focus:outline-none focus:border-red-500 cursor-pointer">
+                        <option value="0">Capítulo 1: El Reloj Detenido</option>
+                        <option value="1" id="optCap2" disabled>Capítulo 2: El Callejón de Neón 🔒</option>
+                        <option value="2" id="optCap3" disabled>Capítulo 3: La Revelación 🔒</option>
+                    </select>
+                </div>
+
+                <!-- Audio Toggle Button -->
+                <button id="btnAudioToggle" class="flex items-center gap-1.5 bg-noir-800 hover:bg-noir-700 text-gray-300 border border-red-950/60 rounded px-2.5 py-1.5 transition-all">
+                    <span id="audioIcon">🔇</span>
+                    <span id="audioLabel" class="hidden md:inline">Ambiente: OFF</span>
+                </button>
+
+                <!-- Weather Effect Intensity Toggle -->
+                <button id="btnWeatherToggle" class="bg-noir-800 hover:bg-noir-700 text-red-400 border border-red-950/60 rounded px-2.5 py-1.5 transition-all" title="Cambiar Clima">
+                    ⚡ <span id="weatherLabel" class="hidden sm:inline">Tormenta</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scroll Progress Bar -->
+        <div class="absolute bottom-0 left-0 h-[2px] bg-red-600 transition-all duration-150 shadow-[0_0_8px_#dc2626]" id="scrollProgressBar" style="width: 0%;"></div>
+    </nav>
+
+    <!-- First Interaction Audio Overlay Prompt -->
+    <div id="audioPromptModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-500">
+        <div class="max-w-md w-full bg-noir-900 border border-red-900/60 rounded-xl p-6 text-center shadow-2xl neon-border">
+            <div class="w-16 h-16 mx-auto mb-4 text-red-600 flex items-center justify-center bg-red-950/40 rounded-full border border-red-800/40">
+                <svg class="w-8 h-8 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                </svg>
+            </div>
+            <h2 class="text-xl font-noirTitle font-bold text-white mb-2">Inmersión Auditiva Noir</h2>
+            <p class="text-sm text-gray-400 font-typewriter mb-6">
+                Para disfrutar la experiencia completa con lluvia sintética, relámpagos y atmósfera de misterio, activa el audio antes de comenzar.
+            </p>
+            <button id="btnStartExperience" class="w-full py-3 bg-red-900 hover:bg-red-800 text-white font-noirTitle font-bold tracking-wider uppercase rounded-lg border border-red-600/50 shadow-lg shadow-red-950/80 transition-all hover:scale-[1.02]">
+                Entrar en la Sombra 🌧️
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Reader Container -->
+    <main class="relative z-20 pt-24 pb-28 max-w-3xl mx-auto px-4 sm:px-6">
+
+        <!-- Case Header Badge -->
+        <div class="mb-8 text-center">
+            <div class="inline-block border border-red-900/40 bg-noir-900/80 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-typewriter text-red-400 mb-3 shadow-inner">
+                Expediente N° 1947-88B &bull; <span id="currentStatusBadge" class="text-amber-500 font-bold">Investigación en Curso</span>
+            </div>
+            <h1 id="chapterTitle" class="text-3xl sm:text-4xl md:text-5xl font-noirTitle font-black text-white tracking-wide uppercase neon-text-crimson mb-2">
+                Capítulo 1: El Reloj Detenido
+            </h1>
+            <p id="chapterSubtitle" class="text-sm font-typewriter text-gray-400 italic">
+                "La lluvia cae sobre el asfalto de la Calle 44, borrando todo rastro... excepto la sangre."
+            </p>
+        </div>
+
+        <!-- Chapter Narrative Content Area -->
+        <article id="storyContent" class="bg-noir-900/75 backdrop-blur-md border border-red-950/50 rounded-2xl p-6 sm:p-10 shadow-2xl text-gray-300 leading-relaxed space-y-6 text-base sm:text-lg">
+            <!-- Dynamic Story HTML inserted via Javascript -->
+        </article>
+
+        <!-- Interactive Riddle Box Section -->
+        <section id="riddleSection" class="mt-10 bg-noir-950/90 border-2 border-red-900/60 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden neon-border">
+            
+            <!-- Visual Accent Corner Marks -->
+            <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-red-900/30 to-transparent pointer-events-none"></div>
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 bg-red-950 rounded-lg text-red-500 border border-red-800/40">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-noirTitle font-bold text-white uppercase tracking-wider">
+                        El Acertijo del Asesino
+                    </h3>
+                    <p class="text-xs font-typewriter text-red-400">
+                        Pista requerida para avanzar en el expediente
+                    </p>
+                </div>
+            </div>
+
+            <!-- Riddle Prompt -->
+            <div id="riddlePrompt" class="bg-noir-900 border border-red-950/80 rounded-xl p-4 sm:p-5 font-typewriter text-sm sm:text-base text-gray-200 mb-6 space-y-3 leading-relaxed">
+                <!-- Riddle Text dynamically injected -->
+            </div>
+
+            <!-- Input & Solve Controls -->
+            <form id="riddleForm" onsubmit="return false;" class="space-y-4">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="riddleInput" placeholder="Introduce la respuesta..." autocomplete="off" class="flex-1 bg-noir-900 border border-red-900/60 rounded-xl px-4 py-3 text-white font-typewriter focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 placeholder-gray-600 transition-all">
+                    
+                    <button type="submit" id="btnSolve" class="px-6 py-3 bg-red-900 hover:bg-red-800 text-white font-noirTitle font-bold uppercase rounded-xl border border-red-600/40 transition-all hover:shadow-[0_0_15px_rgba(220,38,38,0.4)] flex items-center justify-center gap-2">
+                        <span>Desbloquear</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Feedback & Hints Toolbar -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <button type="button" id="btnHint" class="text-xs font-typewriter text-amber-500 hover:text-amber-400 underline flex items-center gap-1 transition-colors">
+                        <span>💡 Pedir pista al archivo detective</span>
+                    </button>
+                    
+                    <span id="hintCountBadge" class="text-xs font-typewriter text-gray-500">
+                        Pistas disponibles: <span id="hintCount">2</span>
+                    </span>
+                </div>
+
+                <!-- Hint Text Display Area -->
+                <div id="hintBox" class="hidden bg-amber-950/30 border border-amber-800/40 rounded-lg p-3 text-xs font-typewriter text-amber-300">
+                    <!-- Hint text injected here -->
+                </div>
+
+                <!-- Success / Error Feedback Toast -->
+                <div id="riddleFeedback" class="hidden rounded-lg p-3 text-sm font-typewriter text-center transition-all">
+                    <!-- Feedback injected -->
+                </div>
+            </form>
+        </section>
+
+        <!-- Chapter Completion Certificate / Final Case Solved Modal -->
+        <div id="caseSolvedModal" class="hidden mt-10 bg-gradient-to-b from-noir-900 to-black border-2 border-amber-600/80 rounded-2xl p-8 text-center shadow-2xl relative">
+            <div class="w-20 h-20 mx-auto mb-4 bg-amber-500/10 rounded-full border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l2.4 7.4h7.6l-6.2 4.5 2.4 7.4-6.2-4.5-6.2 4.5 2.4-7.4-6.2-4.5h7.6z"/>
+                </svg>
+            </div>
+            <h2 class="text-3xl font-noirTitle font-black text-amber-400 uppercase tracking-widest mb-2">
+                ¡CASO RESUELTO!
+            </h2>
+            <p class="font-typewriter text-gray-300 mb-6 text-sm sm:text-base max-w-lg mx-auto">
+                Has descifrado los enigmas de "El Eco de la Sombra". El culpable ha sido atrapado bajo la fría lluvia de la medianoche.
+            </p>
+            <button id="btnRestartStory" class="px-8 py-3 bg-amber-600 hover:bg-amber-500 text-black font-noirTitle font-bold uppercase rounded-xl transition-all shadow-lg">
+                Reabrir Expediente desde el Inicio 🔄
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        // --- STORY DATA & CHAPTERS DEFINITION ---
+        const STORY_DATA = [
+            {
+                id: 0,
+                title: "Capítulo 1: El Reloj Detenido",
+                subtitle: "La lluvia cae sobre el asfalto de la Calle 44, borrando todo rastro... excepto la sangre.",
+                weather: "rain_light",
+                content: `
+                    <p class="first-letter:text-5xl first-letter:font-noirTitle first-letter:font-bold first-letter:text-red-600 first-letter:mr-3 first-letter:float-left">
+                        El humo de mi cigarrillo mentolado apenas lograba disimular el olor a humedad y hierro fresco. La puerta del despacho de Silas Vance, el anciano relojero de la Sexta Avenida, estaba entornada. Un charco espeso de sangre carmesí se escurría bajo la madera noble.
+                    </p>
+                    <p>
+                        Silas yacía sobre su escritorio, con una pluma estilográfica aún entre sus dedos rígidos. Frente a él, sobre el mantel de cuero, reposaba su bien más preciado: un reloj de bolsillo de oro macizo. Las manecillas estaban atascadas violentamente. El segundero había sido arrancado.
+                    </p>
+                    <div class="my-6 border-l-4 border-red-700 bg-noir-950/80 p-4 font-typewriter text-sm text-red-200 rounded-r-lg shadow-inner">
+                        <p class="italic">"El tiempo de Silas terminó exactamente a las <strong>03:42</strong>. Sobre la madera, grabado con la punta de un estilete, hay un mensaje:"</p>
+                        <p class="mt-2 font-bold uppercase tracking-wider text-red-400">
+                            'Para encontrar la guarida donde aguardo, toma los minutos del reloj roto (42), multiplícalos por la hora exacta (3) y súmale la edad a la que Silas juró que moriría (82).'
+                        </p>
+                    </div>
+                    <p>
+                        Escuché un chasquido a mis espaldas. Una gota pesada cayó desde el techo, manchando el informe sobre mis zapatos de piel. El asesino no solo buscaba la vida del viejo relojero; quería jugar conmigo. Necesito resolver la cifra para abrir la caja fuerte tras el cuadro de la pared.
+                    </p>
+                `,
+                riddle: {
+                    prompt: "Calcule la cifra numérica de 3 dígitos que desbloquea la caja fuerte de Silas Vance utilizando la pista del escrito grabado en la mesa.",
+                    answer: "208", // (42 * 3) + 82 = 126 + 82 = 208
+                    hints: [
+                        "Pista 1: Multiplica primero los minutos (42) por la hora (3). Eso te dará 126.",
+                        "Pista 2: Suma 126 más la edad mencionada (82). La respuesta es exactamente 208."
+                    ]
+                }
+            },
+            {
+                id: 1,
+                title: "Capítulo 2: El Callejón de los Neones",
+                subtitle: "Los relámpagos desgarran el cielo mientras las sombras susurran en la oscuridad.",
+                weather: "storm",
+                content: `
+                    <p class="first-letter:text-5xl first-letter:font-noirTitle first-letter:font-bold first-letter:text-red-600 first-letter:mr-3 first-letter:float-left">
+                        El código de la caja fuerte funcionó con un chasquido seco. En su interior hallé una libreta con una dirección: el callejón tras la discoteca 'El Neón Sangriento'. Al llegar, una tormenta feroz azotaba la ciudad, acompañada por truenos retumbantes que hacían vibrar los cristales.
+                    </p>
+                    <p>
+                        Bajo la luz parpadeante de un letrero de neón rojo, el cadáver de un informante colgaba apoyado contra la pared de ladrillos. A sus pies, un cuchillo de caza brillaba al reflejar los relámpagos. En el muro de piedra, pintado con pintura fresca que chorreaba como lágrimas rojas, había un acertijo escrito en letras mayúsculas:
+                    </p>
+                    <div class="my-6 border-l-4 border-red-600 bg-noir-950/90 p-4 font-typewriter text-sm text-gray-200 rounded-r-lg shadow-inner">
+                        <p class="text-red-400 font-bold uppercase tracking-widest text-center mb-2">
+                            ⚡ EL ENIGMA DEL CALLEJÓN ⚡
+                        </p>
+                        <p class="italic text-center">
+                            "Camino a tu lado sin cuerpo, vuelo en la noche sin alas. Caigo bajo la lluvia pero jamás me mojo. Cuanto más brilla el neón, más grande me vuelvo. ¿Qué soy?"
+                        </p>
+                    </div>
+                    <p>
+                        Un trueno ensordeció la calle mientras la silueta con sombrero de ala ancha se escurría al fondo del pasaje. Si no respondo rápido al acertijo grabado en la pared, perderé su rastro en la niebla.
+                    </p>
+                `,
+                riddle: {
+                    prompt: "¿Qué entidad o figura invisible es la respuesta al enigma pintado bajo el neón?",
+                    answer: "SOMBRA",
+                    altAnswers: ["LA SOMBRA", "LAS SOMBRAS"],
+                    hints: [
+                        "Pista 1: Es algo que te sigue a todas partes cuando hay luz cerca.",
+                        "Pista 2: El título de este mismo expediente contiene la palabra clave: 'SOMBRA'."
+                    ]
+                }
+            },
+            {
+                id: 2,
+                title: "Capítulo 3: La Revelación",
+                subtitle: "En la mansión abandonada de la colina, la verdad exige su precio en sangre.",
+                weather: "crimson_fog",
+                content: `
+                    <p class="first-letter:text-5xl first-letter:font-noirTitle first-letter:font-bold first-letter:text-red-600 first-letter:mr-3 first-letter:float-left">
+                        Grité la palabra 'SOMBRA' al viento y el eco resonó en la estructura metálica. El rastro de pisadas de barro me condujo hasta la mansión abandonada de los Blackwood, en lo alto de la colina. El ambiente aquí arriba es denso, dominado por una niebla rojiza que parece respirar.
+                    </p>
+                    <p>
+                        Subí las escaleras de roble crujiente con la pistola en mano. En el gran salón, frente a la chimenea apagada, una figura de espaldas servía dos copas de cristal con licor ámbar. Se giró despacio. Era el mismísimo Inspector Harrison, mi mentor en el departamento de policía.
+                    </p>
+                    <div class="my-6 border-l-4 border-amber-600 bg-noir-950/90 p-4 font-typewriter text-sm text-amber-200 rounded-r-lg shadow-inner">
+                        <p class="italic">
+                            "Sorprendente, muchacho. Has seguido todas mis migajas," dijo Harrison con una sonrisa amarga. "Pero para arrestarme necesitas la última pieza. ¿Quién es el verdadero 'Eco de la Sombra'?"
+                        </p>
+                        <p class="mt-2 font-bold uppercase tracking-wider text-red-400">
+                            "No soy un asesino común. Soy la voz de aquellos que la ciudad olvidó. Escribe mi profesión original antes de vestir el placa de policía..."
+                        </p>
+                    </div>
+                    <p>
+                        Recordé el expediente del inspector: antes de entrar a la policía, Harrison era un aclamado escritor de novelas trágicas bajo un seudónimo. Si pronuncio su verdadera vocación, su confesión quedará sellada.
+                    </p>
+                `,
+                riddle: {
+                    prompt: "¿Cuál era la profesión original de Harrison antes de convertirse en detective/policía?",
+                    answer: "ESCRITOR",
+                    altAnswers: ["POETA", "NOVELISTA"],
+                    hints: [
+                        "Pista 1: Alguien que escribe libros o historias trágicas.",
+                        "Pista 2: Empieza por 'E' y termina por 'R': ESCRITOR."
+                    ]
+                }
+            }
+        ];
+
+        // --- APP STATE ---
+        let currentChapterIndex = 0;
+        let unlockedChapters = [true, false, false];
+        let hintsUsed = [0, 0, 0];
+        let isAudioActive = false;
+        let currentWeatherType = "rain_light"; // rain_light, storm, crimson_fog
+
+        // --- WEB AUDIO API SYNTHESIZER ---
+        let audioCtx = null;
+        let rainGainNode = null;
+        let thunderGainNode = null;
+        let ambientOscNode = null;
+
+        function initAudioEngine() {
+            if (audioCtx) return;
+
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+
+                // 1. Rain Synthesizer (Pink Noise + Lowpass Filter)
+                const bufferSize = audioCtx.sampleRate * 2;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                    output[i] *= 0.11; // scale down volume
+                    b6 = white * 0.115926;
+                }
+
+                const whiteNoise = audioCtx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                const rainFilter = audioCtx.createBiquadFilter();
+                rainFilter.type = 'lowpass';
+                rainFilter.frequency.value = 800;
+
+                rainGainNode = audioCtx.createGain();
+                rainGainNode.gain.value = 0.0; // muted by default
+
+                whiteNoise.connect(rainFilter);
+                rainFilter.connect(rainGainNode);
+                rainGainNode.connect(audioCtx.destination);
+                whiteNoise.start();
+
+                // 2. Ambient Tense Synth Drone
+                ambientOscNode = audioCtx.createOscillator();
+                const ambientGain = audioCtx.createGain();
+                ambientOscNode.type = 'sawtooth';
+                ambientOscNode.frequency.value = 55; // A1 low drone
+
+                const ambFilter = audioCtx.createBiquadFilter();
+                ambFilter.type = 'lowpass';
+                ambFilter.frequency.value = 180;
+
+                ambientGain.gain.value = 0.03;
+
+                ambientOscNode.connect(ambFilter);
+                ambFilter.connect(ambientGain);
+                ambientGain.connect(audioCtx.destination);
+                ambientOscNode.start();
+
+                isAudioActive = true;
+                updateAudioUI();
+            } catch (e) {
+                console.warn("Web Audio API not supported or blocked", e);
+            }
+        }
+
+        function triggerThunderSound() {
+            if (!audioCtx || !isAudioActive) return;
+
+            // Synthetic Thunder Burst
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 1.2);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.5);
+        }
+
+        function toggleAudio() {
+            if (!audioCtx) {
+                initAudioEngine();
+                return;
+            }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            isAudioActive = !isAudioActive;
+            if (rainGainNode) {
+                rainGainNode.gain.setTargetAtTime(isAudioActive ? 0.15 : 0.0, audioCtx.currentTime, 0.2);
+            }
+            updateAudioUI();
+        }
+
+        function updateAudioUI() {
+            const icon = document.getElementById('audioIcon');
+            const label = document.getElementById('audioLabel');
+            if (isAudioActive) {
+                icon.textContent = '🔊';
+                label.textContent = 'Ambiente: ON';
+            } else {
+                icon.textContent = '🔇';
+                label.textContent = 'Ambiente: OFF';
+            }
+        }
+
+        // --- WEATHER & ATMOSPHERE CANVAS ENGINE ---
+        const weatherCanvas = document.getElementById('weatherCanvas');
+        const weatherCtx = weatherCanvas.getContext('2d');
+        const bloodCanvas = document.getElementById('bloodCanvas');
+        const bloodCtx = bloodCanvas.getContext('2d');
+
+        let width, height;
+        let rainParticles = [];
+        let bloodSplatters = [];
+        let lightningFlashTimer = 0;
+
+        function resizeCanvases() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            weatherCanvas.width = width;
+            weatherCanvas.height = height;
+            bloodCanvas.width = width;
+            bloodCanvas.height = height;
+            initRain();
+        }
+
+        function initRain() {
+            rainParticles = [];
+            const count = currentWeatherType === 'storm' ? 350 : 150;
+            for (let i = 0; i < count; i++) {
+                rainParticles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    length: Math.random() * 20 + 10,
+                    speed: Math.random() * 12 + 18,
+                    opacity: Math.random() * 0.4 + 0.2
+                });
+            }
+        }
+
+        function triggerLightning() {
+            document.body.classList.add('lightning-flash');
+            triggerThunderSound();
+            setTimeout(() => {
+                document.body.classList.remove('lightning-flash');
+            }, 400);
+        }
+
+        function drawWeather() {
+            weatherCtx.clearRect(0, 0, width, height);
+
+            // Crimson Fog Effect for Chapter 3
+            if (currentWeatherType === 'crimson_fog') {
+                const fogGrad = weatherCtx.createRadialGradient(width/2, height/2, 100, width/2, height/2, width*0.8);
+                fogGrad.addColorStop(0, 'rgba(139, 0, 0, 0.05)');
+                fogGrad.addColorStop(1, 'rgba(8, 8, 12, 0.85)');
+                weatherCtx.fillStyle = fogGrad;
+                weatherCtx.fillRect(0, 0, width, height);
+            }
+
+            // Draw Rain Particles
+            weatherCtx.strokeStyle = currentWeatherType === 'storm' ? 'rgba(200, 225, 255, 0.5)' : 'rgba(170, 190, 210, 0.35)';
+            weatherCtx.lineWidth = 1.2;
+            weatherCtx.beginPath();
+
+            for (let i = 0; i < rainParticles.length; i++) {
+                const p = rainParticles[i];
+                weatherCtx.moveTo(p.x, p.y);
+                weatherCtx.lineTo(p.x - 3, p.y + p.length);
+
+                p.y += p.speed;
+                p.x -= 1.5;
+
+                if (p.y > height) {
+                    p.y = -20;
+                    p.x = Math.random() * (width + 100);
+                }
+            }
+            weatherCtx.stroke();
+
+            // Random Storm Lightning Intervals
+            if (currentWeatherType === 'storm') {
+                if (Math.random() < 0.004) { // Random lightning flash probability
+                    triggerLightning();
+                }
+            }
+
+            requestAnimationFrame(drawWeather);
+        }
+
+        // --- SCROLL BLOOD & KNIFE SLASH EFFECTS ---
+        let lastScrollY = window.scrollY;
+
+        function addBloodSplatter(x, y) {
+            bloodSplatters.push({
+                x: x,
+                y: y,
+                radius: Math.random() * 8 + 4,
+                opacity: 0.8
+            });
+            drawBlood();
+        }
+
+        function drawBlood() {
+            bloodCtx.clearRect(0, 0, width, height);
+            for (let i = 0; i < bloodSplatters.length; i++) {
+                const b = bloodSplatters[i];
+                bloodCtx.fillStyle = `rgba(139, 0, 0, ${b.opacity})`;
+                bloodCtx.beginPath();
+                bloodCtx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                bloodCtx.fill();
+            }
+        }
+
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollY / maxScroll) * 100;
+
+            // Update Progress Bar
+            document.getElementById('scrollProgressBar').style.width = `${Math.min(100, Math.max(0, progress))}%`;
+
+            // Trigger Blood Drip on fast scroll downwards
+            if (scrollY - lastScrollY > 40 && Math.random() < 0.3) {
+                createBloodDripEl();
+            }
+
+            lastScrollY = scrollY;
+        });
+
+        function createBloodDripEl() {
+            const drip = document.createElement('div');
+            drip.className = 'blood-drip';
+            drip.style.left = `${Math.random() * 95}%`;
+            document.body.appendChild(drip);
+            setTimeout(() => drip.remove(), 3500);
+        }
+
+        function triggerKnifeSlash() {
+            const slash = document.getElementById('knifeSlashEl');
+            slash.classList.remove('animate-slash');
+            void slash.offsetWidth; // force reflow
+            slash.classList.add('animate-slash');
+        }
+
+        // --- STORY & RIDDLE CONTROLLER ---
+        function loadChapter(index) {
+            currentChapterIndex = index;
+            const data = STORY_DATA[index];
+
+            // Trigger Transition Effect
+            triggerKnifeSlash();
+
+            // Update Header & Story Content
+            document.getElementById('chapterTitle').textContent = data.title;
+            document.getElementById('chapterSubtitle').textContent = data.subtitle;
+            document.getElementById('storyContent').innerHTML = data.content;
+
+            // Update Riddle Box
+            document.getElementById('riddlePrompt').textContent = data.riddle.prompt;
+            document.getElementById('riddleInput').value = '';
+            document.getElementById('riddleFeedback').className = 'hidden rounded-lg p-3 text-sm font-typewriter text-center transition-all';
+            document.getElementById('hintBox').classList.add('hidden');
+            
+            // Update Hints Remaining Badge
+            const remainingHints = 2 - hintsUsed[index];
+            document.getElementById('hintCount').textContent = remainingHints;
+
+            // Update Weather State
+            currentWeatherType = data.weather;
+            initRain();
+
+            // Hide/Show Riddle section if completed
+            if (unlockedChapters[index + 1] || index === STORY_DATA.length - 1 && unlockedChapters[index]) {
+                document.getElementById('currentStatusBadge').textContent = index === STORY_DATA.length - 1 && unlockedChapters[index] ? "Caso Cerrado" : "Capítulo Superado";
+                document.getElementById('currentStatusBadge').className = "inline-block border border-green-900/40 bg-green-950/60 text-green-400 px-4 py-1.5 rounded-full text-xs font-typewriter mb-3 shadow-inner";
+            } else {
+                document.getElementById('currentStatusBadge').textContent = "Investigación en Curso";
+                document.getElementById('currentStatusBadge').className = "inline-block border border-red-900/40 bg-noir-900/80 text-amber-500 px-4 py-1.5 rounded-full text-xs font-typewriter mb-3 shadow-inner";
+            }
+
+            // Scroll Smoothly to Top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function handleRiddleSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('riddleInput').value.trim().toUpperCase();
+            const currentRiddle = STORY_DATA[currentChapterIndex].riddle;
+            const feedbackEl = document.getElementById('riddleFeedback');
+
+            const isCorrect = input === currentRiddle.answer.toUpperCase() || 
+                              (currentRiddle.altAnswers && currentRiddle.altAnswers.includes(input));
+
+            if (isCorrect) {
+                // Success
+                feedbackEl.className = 'block rounded-lg p-3 text-sm font-typewriter text-center bg-green-950/80 border border-green-600/60 text-green-300 font-bold animate-pulse';
+                feedbackEl.textContent = '✓ ¡CLAVE CORRECTA! Avanzando en el expediente...';
+
+                // Unlock Next Chapter
+                if (currentChapterIndex < STORY_DATA.length - 1) {
+                    unlockedChapters[currentChapterIndex + 1] = true;
+                    
+                    // Enable Dropdown Option
+                    const nextOpt = document.getElementById(`optCap${currentChapterIndex + 2}`);
+                    if (nextOpt) {
+                        nextOpt.disabled = false;
+                        nextOpt.textContent = STORY_DATA[currentChapterIndex + 1].title;
+                    }
+
+                    setTimeout(() => {
+                        loadChapter(currentChapterIndex + 1);
+                        document.getElementById('chapterSelect').value = currentChapterIndex;
+                    }, 1800);
+                } else {
+                    // Final Chapter Solved!
+                    setTimeout(() => {
+                        document.getElementById('riddleSection').classList.add('hidden');
+                        document.getElementById('caseSolvedModal').classList.remove('hidden');
+                        triggerLightning();
+                    }, 1200);
+                }
+            } else {
+                // Error
+                feedbackEl.className = 'block rounded-lg p-3 text-sm font-typewriter text-center bg-red-950/80 border border-red-600/60 text-red-300 font-bold';
+                feedbackEl.textContent = '✗ Clave incorrecta. Analiza los detalles del expediente o solicita una pista.';
+            }
+        }
+
+        function handleHintRequest() {
+            const hints = STORY_DATA[currentChapterIndex].riddle.hints;
+            const used = hintsUsed[currentChapterIndex];
+            const hintBox = document.getElementById('hintBox');
+
+            if (used < hints.length) {
+                hintBox.classList.remove('hidden');
+                hintBox.textContent = hints[used];
+                hintsUsed[currentChapterIndex]++;
+                document.getElementById('hintCount').textContent = hints.length - hintsUsed[currentChapterIndex];
+            } else {
+                hintBox.classList.remove('hidden');
+                hintBox.textContent = "No hay más pistas disponibles para este capítulo. ¡Usa tu astucia de detective!";
+            }
+        }
+
+        // --- EVENT LISTENERS BINDING ---
+        document.getElementById('btnStartExperience').addEventListener('click', () => {
+            initAudioEngine();
+            document.getElementById('audioPromptModal').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                document.getElementById('audioPromptModal').classList.add('hidden');
+            }, 500);
+        });
+
+        document.getElementById('btnAudioToggle').addEventListener('click', toggleAudio);
+        document.getElementById('riddleForm').addEventListener('submit', handleRiddleSubmit);
+        document.getElementById('btnHint').addEventListener('click', handleHintRequest);
+
+        document.getElementById('chapterSelect').addEventListener('change', (e) => {
+            const idx = parseInt(e.target.value, 10);
+            if (unlockedChapters[idx]) {
+                loadChapter(idx);
+            }
+        });
+
+        document.getElementById('btnWeatherToggle').addEventListener('click', () => {
+            if (currentWeatherType === 'rain_light') {
+                currentWeatherType = 'storm';
+                document.getElementById('weatherLabel').textContent = 'Tormenta';
+            } else if (currentWeatherType === 'storm') {
+                currentWeatherType = 'crimson_fog';
+                document.getElementById('weatherLabel').textContent = 'Niebla Crimson';
+            } else {
+                currentWeatherType = 'rain_light';
+                document.getElementById('weatherLabel').textContent = 'Lluvia';
+            }
+            initRain();
+        });
+
+        document.getElementById('btnRestartStory').addEventListener('click', () => {
+            unlockedChapters = [true, false, false];
+            hintsUsed = [0, 0, 0];
+            document.getElementById('optCap2').disabled = true;
+            document.getElementById('optCap2').textContent = "Capítulo 2: El Callejón de Neón 🔒";
+            document.getElementById('optCap3').disabled = true;
+            document.getElementById('optCap3').textContent = "Capítulo 3: La Revelación 🔒";
+            
+            document.getElementById('caseSolvedModal').classList.add('hidden');
+            document.getElementById('riddleSection').classList.remove('hidden');
+            document.getElementById('chapterSelect').value = 0;
+            loadChapter(0);
+        });
+
+        // Initialize Window & Canvas
+        window.addEventListener('resize', resizeCanvases);
+
+        window.onload = function() {
+            resizeCanvases();
+            loadChapter(0);
+            drawWeather();
+        };
+    </script>
+</body>
+</html>

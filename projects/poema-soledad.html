@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El peso del aire vacío</title>
+<style>
+  :root{
+    --bg1: #0b0e14;
+    --bg2: #151a24;
+    --text: #dfe4ee;
+    --muted: #7d879c;
+    --cold: #6fa8c9;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin: 0; min-height: 100%;
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow-x: hidden;
+  }
+
+  /* ---------- Motas de polvo flotando (ambiente, quietud) ---------- */
+  .dust{ position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .mote{
+    position: absolute; width: 3px; height: 3px; border-radius: 50%;
+    background: rgba(223,228,238,0.35);
+    animation: floaty linear infinite;
+  }
+  @keyframes floaty{
+    from{ transform: translateY(0) translateX(0); opacity: 0; }
+    10%{ opacity: 0.6; }
+    90%{ opacity: 0.3; }
+    to{ transform: translateY(-100vh) translateX(20px); opacity: 0; }
+  }
+
+  /* ---------- Frío que se filtra: viñeta que crece con el scroll ---------- */
+  .frost{
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(111,168,201,0.35) 100%);
+    opacity: 0;
+    transition: opacity 0.2s linear;
+  }
+
+  .intro{ max-width: 620px; margin: 0 auto; padding: 70px 24px 10px; text-align: center; position: relative; z-index: 2; }
+  .intro h1{ font-size: clamp(1.6rem, 5vw, 2.3rem); margin: 0 0 6px; }
+  .intro p{ color: var(--muted); font-style: italic; margin: 0; }
+
+  .stanza{
+    position: relative; z-index: 2;
+    max-width: 620px; margin: 70px auto; padding: 0 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 26px;
+    text-align: center;
+  }
+  .stanza p{ line-height: 1.9; margin: 0; font-size: 1.05rem; }
+  .stanza p.fade{ opacity: 0; transform: translateY(16px); transition: opacity 0.8s ease, transform 0.8s ease; }
+  .stanza p.fade.visible{ opacity: 1; transform: translateY(0); }
+
+  /* ---------- 1. Respirar: círculo que se expande y contrae ---------- */
+  .breath{
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(111,168,201,0.5), transparent 70%);
+    animation: breathe 5.5s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%, 100%{ transform: scale(0.85); opacity: 0.5; }
+    50%{ transform: scale(1.15); opacity: 0.9; }
+  }
+
+  /* ---------- 2. La sombra que acompaña ---------- */
+  .shadow-scene{
+    position: relative; width: 100%; height: 140px;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .figure{
+    width: 18px; height: 60px; border-radius: 9px 9px 0 0;
+    background: rgba(223,228,238,0.75);
+    position: relative; z-index: 2;
+  }
+  .figure::before{
+    content: ''; position: absolute; top: -20px; left: 1px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: rgba(223,228,238,0.75);
+  }
+  .shadow-blob{
+    position: absolute; bottom: 0; width: 40px; height: 10px;
+    border-radius: 50%; background: rgba(0,0,0,0.5);
+    filter: blur(2px);
+    transition: transform 0.6s ease;
+  }
+  .shadow-hint{ font-size: 0.75rem; color: var(--muted); margin-top: -14px; }
+
+  /* ---------- 3. El teléfono ---------- */
+  .phone{
+    width: 62px; height: 108px; border-radius: 12px;
+    background: #1d2330; border: 2px solid #313a4d;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative;
+  }
+  .phone .screen{
+    width: 48px; height: 90px; border-radius: 7px;
+    background: #0a0d13;
+    transition: background 0.4s ease, box-shadow 0.4s ease;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 4px;
+  }
+  .phone.lit .screen{
+    background: #cfe3ee;
+    box-shadow: 0 0 30px 6px rgba(207,227,238,0.6);
+  }
+  .phone .msg{
+    font-family: 'Trebuchet MS', sans-serif; font-size: 0.55rem; color: #4a5a68;
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  .phone.lit .msg{ opacity: 1; }
+  .phone-hint{ font-size: 0.75rem; color: var(--muted); }
+
+  /* ---------- 4. La planta y la luz encendida ---------- */
+  .home-row{ display: flex; gap: 50px; align-items: flex-end; justify-content: center; }
+
+  .plant{ cursor: pointer; transform-origin: bottom center; animation: sway 4s ease-in-out infinite; }
+  .plant.poke{ animation: swayBig 0.8s ease-in-out; }
+  @keyframes sway{ 0%,100%{ transform: rotate(-3deg); } 50%{ transform: rotate(3deg); } }
+  @keyframes swayBig{ 0%,100%{ transform: rotate(-3deg); } 25%{ transform: rotate(10deg); } 75%{ transform: rotate(-10deg); } }
+
+  .bulb{ position: relative; }
+  .bulb .glow{
+    width: 20px; height: 26px; border-radius: 50% 50% 45% 45%;
+    background: radial-gradient(circle, #ffe9a8, #b89646 80%);
+    box-shadow: 0 0 18px 6px rgba(255,233,168,0.45);
+    animation: flicker 3.2s ease-in-out infinite;
+    margin: 0 auto;
+  }
+  @keyframes flicker{
+    0%,100%{ opacity: 0.85; } 48%{ opacity: 0.85; } 50%{ opacity: 0.55; } 52%{ opacity: 0.85; }
+  }
+
+  /* ---------- 5. La puerta que no se abre ---------- */
+  .door-wrap{ display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .door{
+    width: 70px; height: 120px; border-radius: 4px 4px 0 0;
+    background: linear-gradient(160deg, #2c2013, #1b140c);
+    border: 3px solid #0d0a06;
+    position: relative; cursor: pointer;
+  }
+  .door::after{
+    content: ''; position: absolute; right: 8px; top: 55%;
+    width: 6px; height: 6px; border-radius: 50%; background: #c9a35a;
+  }
+  .door.knock{ animation: knock 0.4s ease; }
+  @keyframes knock{
+    0%,100%{ transform: translateX(0); }
+    25%{ transform: translateX(-3px); }
+    50%{ transform: translateX(3px); }
+    75%{ transform: translateX(-2px); }
+  }
+  .door-whisper{
+    font-size: 0.8rem; color: var(--muted); opacity: 0; transition: opacity 1.2s ease;
+    min-height: 18px;
+  }
+  .door-whisper.show{ opacity: 1; }
+
+  /* ---------- 6. Cierre: temblor ---------- */
+  .tremble{
+    display: inline-block;
+    animation: tremble 0.25s ease-in-out infinite;
+  }
+  @keyframes tremble{
+    0%,100%{ transform: translate(0,0); }
+    25%{ transform: translate(0.5px,-0.5px); }
+    50%{ transform: translate(-0.5px,0.5px); }
+    75%{ transform: translate(0.5px,0.5px); }
+  }
+
+  .end-space{ height: 20vh; }
+</style>
+</head>
+<body>
+
+<div class="dust" id="dust"></div>
+<div class="frost" id="frost"></div>
+
+<div class="intro">
+  <h1>El peso del aire vacío</h1>
+  <p>Un poema sobre cómo se siente la soledad — no lo que es, sino cómo pesa.</p>
+</div>
+
+<!-- Estrofa 1 -->
+<section class="stanza">
+  <div class="breath"></div>
+  <p class="fade">Hay días en que el silencio pesa más que las palabras,</p>
+  <p class="fade">se sienta en el pecho como una piedra tibia,</p>
+  <p class="fade">y respirar se vuelve un ejercicio de recordar</p>
+  <p class="fade">que el aire, aunque vacío, todavía sabe llenar los pulmones.</p>
+</section>
+
+<!-- Estrofa 2 -->
+<section class="stanza" id="shadowSection">
+  <div class="shadow-scene">
+    <div class="figure"></div>
+    <div class="shadow-blob" id="shadowBlob"></div>
+  </div>
+  <p class="shadow-hint">(mueve el cursor o desliza el dedo por aquí)</p>
+  <p class="fade">Es una habitación donde los pasos suenan más fuerte,</p>
+  <p class="fade">donde la propia sombra parece hacer compañía</p>
+  <p class="fade">solo porque se mueve cuando yo me muevo,</p>
+  <p class="fade">solo porque también se acuesta cuando yo me acuesto.</p>
+</section>
+
+<!-- Estrofa 3 -->
+<section class="stanza">
+  <div class="phone" id="phone">
+    <div class="screen"><span class="msg">Sin mensajes<br>nuevos</span></div>
+  </div>
+  <p class="phone-hint">(toca el teléfono)</p>
+  <p class="fade">Es el teléfono que se enciende sin razón</p>
+  <p class="fade">y por un segundo el corazón salta,</p>
+  <p class="fade">antes de recordar que solo era la hora,</p>
+  <p class="fade">que nadie escribió, que nadie preguntó.</p>
+</section>
+
+<!-- Estrofa 4 -->
+<section class="stanza">
+  <div class="home-row">
+    <svg class="plant" id="plant" width="50" height="70" viewBox="0 0 50 70">
+      <path d="M25,45 C10,40 8,20 20,10 C22,25 25,32 25,45 Z" fill="#5a8f5a"/>
+      <path d="M25,45 C40,40 42,22 30,14 C28,26 25,34 25,45 Z" fill="#4a7a4a"/>
+      <path d="M25,45 C25,35 25,25 25,18" stroke="#3d6b3d" stroke-width="2" fill="none"/>
+      <path d="M15,68 L35,68 L32,45 L18,45 Z" fill="#a05a3a"/>
+    </svg>
+    <div class="bulb"><div class="glow"></div></div>
+  </div>
+  <p class="fade">Se mete en las costumbres pequeñas:</p>
+  <p class="fade">en cocinar para uno y guardar la mitad que sobra,</p>
+  <p class="fade">en hablarle a las plantas porque al menos ellas no se van,</p>
+  <p class="fade">en dejar la luz prendida solo para no llegar a oscuras a ningún lado.</p>
+</section>
+
+<!-- Estrofa 5 -->
+<section class="stanza">
+  <div class="door-wrap">
+    <div class="door" id="door"></div>
+    <p class="door-whisper" id="doorWhisper">...</p>
+  </div>
+  <p class="phone-hint">(toca la puerta)</p>
+  <p class="fade">Y a veces se disfraza de cansancio,</p>
+  <p class="fade">de "hoy no tengo ganas de ver a nadie",</p>
+  <p class="fade">aunque por dentro grite lo contrario,</p>
+  <p class="fade">aunque por dentro busque una puerta que no sabe tocar.</p>
+</section>
+
+<!-- Estrofa final -->
+<section class="stanza">
+  <p class="fade">No duele como un golpe,</p>
+  <p class="fade">duele como el frío que se filtra despacio,</p>
+  <p class="fade">sin ruido, sin aviso,</p>
+  <p class="fade">hasta que uno se da cuenta que ya lleva <span class="tremble">tiempo temblando</span>.</p>
+</section>
+
+<div class="end-space"></div>
+
+<script>
+  // ---------- Motas de polvo ----------
+  const dustContainer = document.getElementById('dust');
+  for (let i = 0; i < 40; i++){
+    const mote = document.createElement('div');
+    mote.className = 'mote';
+    mote.style.left = Math.random() * 100 + 'vw';
+    mote.style.bottom = '-10px';
+    mote.style.animationDuration = (12 + Math.random() * 14) + 's';
+    mote.style.animationDelay = (Math.random() * 14) + 's';
+    dustContainer.appendChild(mote);
+  }
+
+  // ---------- Frío que crece con el scroll ----------
+  const frost = document.getElementById('frost');
+  function updateFrost(){
+    const scrollable = document.body.scrollHeight - window.innerHeight;
+    const progress = Math.min(1, window.scrollY / scrollable);
+    frost.style.opacity = (progress * 0.9).toFixed(2);
+  }
+  window.addEventListener('scroll', updateFrost);
+  updateFrost();
+
+  // ---------- Párrafos aparecen al hacer scroll ----------
+  const fadeEls = document.querySelectorAll('.fade');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.3 });
+  fadeEls.forEach(el => obs.observe(el));
+
+  // ---------- La sombra sigue al mouse con retraso, dentro de su sección ----------
+  const shadowSection = document.getElementById('shadowSection');
+  const shadowBlob = document.getElementById('shadowBlob');
+  let targetX = 0, currentX = 0;
+
+  shadowSection.addEventListener('mousemove', e => {
+    const rect = shadowSection.getBoundingClientRect();
+    targetX = (e.clientX - rect.left - rect.width / 2) * 0.4;
+  });
+  shadowSection.addEventListener('mouseleave', () => { targetX = 0; });
+
+  shadowSection.addEventListener('touchmove', e => {
+    const touch = e.touches[0];
+    const rect = shadowSection.getBoundingClientRect();
+    targetX = (touch.clientX - rect.left - rect.width / 2) * 0.4;
+  }, { passive: true });
+  shadowSection.addEventListener('touchend', () => { targetX = 0; });
+
+  function animateShadow(){
+    currentX += (targetX - currentX) * 0.06; // el retraso: la sombra "sigue" despacio
+    shadowBlob.style.transform = `translateX(${currentX}px)`;
+    requestAnimationFrame(animateShadow);
+  }
+  animateShadow();
+
+  // ---------- Teléfono: se ilumina al tocarlo ----------
+  const phone = document.getElementById('phone');
+  phone.addEventListener('click', () => {
+    phone.classList.add('lit');
+    setTimeout(() => phone.classList.remove('lit'), 2200);
+  });
+
+  // ---------- Planta: responde un poco más si la tocas ----------
+  const plant = document.getElementById('plant');
+  plant.addEventListener('click', () => {
+    plant.classList.add('poke');
+    setTimeout(() => plant.classList.remove('poke'), 800);
+  });
+
+  // ---------- Puerta: nunca se abre, solo tiembla ----------
+  const door = document.getElementById('door');
+  const doorWhisper = document.getElementById('doorWhisper');
+  door.addEventListener('click', () => {
+    door.classList.add('knock');
+    doorWhisper.classList.add('show');
+    setTimeout(() => door.classList.remove('knock'), 400);
+    setTimeout(() => doorWhisper.classList.remove('show'), 2000);
+  });
+</script>
+
+</body>
+</html>

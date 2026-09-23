@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De la manzana al árbol</title>
+<style>
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body{
+    margin: 0; min-height: 100%; height: 100%;
+    background: linear-gradient(180deg, #cfeaf8, #eaf6ee);
+    font-family: 'Trebuchet MS', Arial, sans-serif; color: #2c3b2c;
+    touch-action: manipulation; overflow-x: hidden;
+  }
+  header{ text-align: center; padding: 18px 16px 4px; }
+  header h1{ margin: 0 0 4px; font-size: clamp(1.15rem, 5vw, 1.7rem); color: #2f5d3a; }
+  header p{ margin: 0; color: #567557; font-size: 0.86rem; min-height: 2.4em; }
+
+  .screen{ display: none; }
+  .screen.active{ display: block; }
+
+  /* ========== PANTALLA 1: manzana ========== */
+  .apple-stage{ display: flex; flex-direction: column; align-items: center; padding: 30px 16px 40px; }
+  .apple-wrap{ position: relative; width: 220px; height: 220px; }
+  .apple-wrap svg{ width: 100%; height: 100%; cursor: pointer; transition: transform 0.25s ease, opacity 0.4s ease; transform-origin: center; }
+  .nom-float{
+    position: absolute; font-weight: bold; color: #b23a24; font-size: 1.1rem;
+    animation: floatUp 0.8s ease forwards; pointer-events: none;
+  }
+  @keyframes floatUp{ from{ opacity: 1; transform: translateY(0); } to{ opacity: 0; transform: translateY(-40px); } }
+  .bite-counter{ margin-top: 14px; color: #6a8a6a; font-size: 0.85rem; }
+
+  /* ========== PANTALLA 2: semillas cayendo ========== */
+  .seed-stage{ position: relative; height: 70vh; max-height: 520px; overflow: hidden; }
+  .seed{
+    position: absolute; top: -6%; width: 18px; height: 22px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: #7a4f2b; cursor: pointer;
+    animation: fall 5.5s linear infinite;
+  }
+  @keyframes fall{ from{ top: -6%; } to{ top: 92%; } }
+  .jar{
+    position: absolute; bottom: 6%; left: 50%; transform: translateX(-50%);
+    font-size: 2.4rem;
+  }
+  .seed-count{ position: absolute; bottom: 2%; left: 0; right: 0; text-align: center; font-size: 0.85rem; color: #567557; }
+  .seed-hint{ text-align: center; color: #567557; font-size: 0.85rem; margin: 0 0 6px; }
+
+  /* ========== PANTALLA 3: siembra y riego ========== */
+  .stage-wrap{ max-width: 420px; margin: 6px auto 0; padding: 0 14px; position: relative; }
+  svg.plant-svg{ width: 100%; height: auto; display: block; }
+  .stage-group{
+    opacity: 0; transform-origin: 150px 232px; transform: scale(0.85);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .stage-group.active{ opacity: 1; transform: scale(1); }
+  .hotspot circle.ring{ fill: rgba(255,255,255,0.6); stroke: #fff; stroke-width: 2; animation: pulse 2.2s ease-in-out infinite; cursor: pointer; }
+  @keyframes pulse{ 0%,100%{ r: 13; opacity: 0.9; } 50%{ r: 16; opacity: 0.55; } }
+  .hotspot text{ font-size: 15px; font-weight: bold; fill: #2f5d3a; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+
+  .status{ text-align: center; margin-top: 8px; }
+  .status .stage-name{ font-size: 1.05rem; font-weight: bold; color: #2f5d3a; }
+  .status .stage-count{ font-size: 0.76rem; color: #6a8a6a; }
+
+  .progress-wrap{ max-width: 280px; margin: 12px auto 4px; }
+  .progress-bar{ background: #d7e8d5; border-radius: 20px; height: 16px; overflow: hidden; }
+  .progress-fill{ background: linear-gradient(90deg, #3f8a52, #6fae47); height: 100%; width: 0%; transition: width 0.1s linear; }
+  .progress-label{ text-align: center; font-size: 0.75rem; color: #567557; margin-top: 4px; }
+
+  .can-area{ display: flex; flex-direction: column; align-items: center; margin: 16px 0 8px; }
+  .watering-can{
+    font-size: 3.4rem; cursor: pointer; user-select: none; touch-action: none;
+    transition: transform 0.15s ease;
+  }
+  .watering-can.active{ transform: rotate(-35deg); }
+  .can-hint{ font-size: 0.78rem; color: #6a8a6a; margin-top: 4px; }
+  .drops{ position: relative; width: 60px; height: 30px; }
+  .drop{
+    position: absolute; left: 50%; top: 0; width: 6px; height: 10px; margin-left: -3px;
+    background: #5fb0e0; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: dropFall 0.5s linear forwards;
+  }
+  @keyframes dropFall{ from{ transform: translateY(0); opacity: 1; } to{ transform: translateY(40px); opacity: 0; } }
+
+  .final-msg{ text-align: center; margin: 10px 0 4px; color: #2f5d3a; font-weight: bold; display: none; }
+
+  .actions{ display: flex; gap: 10px; justify-content: center; margin: 16px 0 30px; flex-wrap: wrap; }
+  button.action{ padding: 11px 22px; border-radius: 30px; border: none; background: #3f8a52; color: #fff; font-size: 0.95rem; cursor: pointer; }
+  button.action.secondary{ background: transparent; border: 1px solid #3f8a52; color: #2f5d3a; }
+
+  .overlay{
+    position: fixed; inset: 0; background: rgba(30,45,30,0.55);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 10; padding: 20px;
+  }
+  .overlay.show{ opacity: 1; pointer-events: auto; }
+  .popup{
+    background: #fff; border-radius: 16px; max-width: 380px; width: 100%;
+    padding: 22px 22px 20px; text-align: center;
+    transform: translateY(14px) scale(0.96); transition: transform 0.25s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+  .overlay.show .popup{ transform: translateY(0) scale(1); }
+  .popup .emoji{ font-size: 2.2rem; margin-bottom: 6px; }
+  .popup h2{ margin: 0 0 8px; color: #2f5d3a; font-size: 1.2rem; }
+  .popup p{ margin: 0; line-height: 1.6; color: #35452f; font-size: 0.95rem; }
+  .popup button{ margin-top: 16px; border: none; background: #3f8a52; color: #fff; padding: 10px 22px; border-radius: 30px; font-size: 0.95rem; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="mainTitle">🍎 De la manzana al árbol</h1>
+  <p id="mainSub">Cómete la manzana para conseguir sus semillas.</p>
+</header>
+
+<!-- ========== PANTALLA 1: MANZANA ========== -->
+<div class="screen active" id="appleScreen">
+  <div class="apple-stage">
+    <div class="apple-wrap">
+      <svg id="appleSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60,55 C55,40 65,28 78,32" stroke="#5a7a35" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <rect x="96" y="18" width="8" height="22" rx="3" fill="#6b4b2e"/>
+        <path d="M100,100 C100,60 140,55 150,80 C165,60 190,90 178,120 C190,150 160,175 130,168 C120,175 100,178 90,168 C55,178 20,150 32,118 C18,90 45,58 62,80 C68,58 100,58 100,100 Z" fill="#e2432b"/>
+        <ellipse cx="72" cy="85" rx="14" ry="9" fill="#ff8a75" opacity="0.55"/>
+      </svg>
+    </div>
+    <p class="bite-counter" id="biteCounter">Toca la manzana</p>
+  </div>
+</div>
+
+<!-- ========== PANTALLA 2: SEMILLAS ========== -->
+<div class="screen" id="seedScreen">
+  <p class="seed-hint">¡Toca las semillas antes de que se caigan!</p>
+  <div class="seed-stage" id="seedStage">
+    <div class="jar">🪴</div>
+    <div class="seed-count" id="seedCount">Semillas recogidas: 0 / 3</div>
+  </div>
+</div>
+
+<!-- ========== PANTALLA 3: SIEMBRA Y RIEGO ========== -->
+<div class="screen" id="growScreen">
+  <div class="stage-wrap">
+    <svg class="plant-svg" viewBox="0 0 300 400" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="230" width="300" height="170" fill="#8a5a34"/>
+      <rect x="0" y="230" width="300" height="14" fill="#6b7f3f"/>
+
+      <g class="stage-group" id="stage0">
+        <ellipse cx="150" cy="262" rx="9" ry="11" fill="#7a4f2b"/>
+        <ellipse cx="150" cy="262" rx="9" ry="11" fill="none" stroke="#5c3a1f" stroke-width="1.5"/>
+      </g>
+      <g class="stage-group" id="stage1">
+        <ellipse cx="150" cy="262" rx="9" ry="11" fill="#7a4f2b"/>
+        <path d="M150,270 C148,290 152,300 150,315" stroke="#e9ddc2" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M150,300 C142,305 138,312 135,320" stroke="#e9ddc2" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,300 C158,305 162,312 165,320" stroke="#e9ddc2" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,244 Q146,232 150,224" stroke="#8ba85c" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </g>
+      <g class="stage-group" id="stage2">
+        <path d="M150,270 C147,295 153,305 150,325" stroke="#e9ddc2" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M150,300 C138,308 130,316 122,326" stroke="#e9ddc2" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M150,300 C162,308 170,316 178,326" stroke="#e9ddc2" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M150,230 L150,188" stroke="#5c8a3c" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="132" cy="186" rx="16" ry="9" fill="#7ab24e" transform="rotate(-20 132 186)"/>
+        <ellipse cx="168" cy="186" rx="16" ry="9" fill="#7ab24e" transform="rotate(20 168 186)"/>
+      </g>
+      <g class="stage-group" id="stage3">
+        <path d="M150,270 C145,300 155,312 150,335" stroke="#e9ddc2" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C135,302 122,312 110,322" stroke="#e9ddc2" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C165,302 178,312 190,322" stroke="#e9ddc2" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,310 L145,332" stroke="#e9ddc2" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,230 L150,140" stroke="#4d7a34" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="128" cy="205" rx="17" ry="10" fill="#6fae47" transform="rotate(-25 128 205)"/>
+        <ellipse cx="172" cy="190" rx="17" ry="10" fill="#7ab24e" transform="rotate(25 172 190)"/>
+        <ellipse cx="126" cy="165" rx="18" ry="10" fill="#6fae47" transform="rotate(-20 126 165)"/>
+        <ellipse cx="174" cy="150" rx="18" ry="10" fill="#7ab24e" transform="rotate(20 174 150)"/>
+      </g>
+      <g class="stage-group" id="stage4">
+        <path d="M150,270 C140,305 160,320 150,345" stroke="#e9ddc2" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C130,304 112,316 96,328" stroke="#e9ddc2" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C170,304 188,316 204,328" stroke="#e9ddc2" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M150,315 L140,340" stroke="#e9ddc2" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M150,315 L160,340" stroke="#e9ddc2" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M150,230 C148,190 152,140 150,105" stroke="#7a5233" stroke-width="10" fill="none" stroke-linecap="round"/>
+        <path d="M150,150 C130,138 118,128 108,116" stroke="#7a5233" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M150,130 C170,118 182,108 194,96" stroke="#7a5233" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="106" cy="110" rx="22" ry="14" fill="#5f9a3f"/>
+        <ellipse cx="196" cy="90" rx="22" ry="14" fill="#6fae47"/>
+        <ellipse cx="150" cy="98" rx="26" ry="16" fill="#6fae47"/>
+      </g>
+      <g class="stage-group" id="stage5">
+        <path d="M150,270 C138,308 162,324 150,350" stroke="#e9ddc2" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C126,306 104,320 84,334" stroke="#e9ddc2" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C174,306 196,320 216,334" stroke="#e9ddc2" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,318 L136,344" stroke="#e9ddc2" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,318 L164,344" stroke="#e9ddc2" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,230 C147,180 153,120 150,90" stroke="#6b4b2e" stroke-width="13" fill="none" stroke-linecap="round"/>
+        <path d="M150,145 C122,128 104,116 88,100" stroke="#6b4b2e" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M150,120 C178,104 198,92 216,76" stroke="#6b4b2e" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="150" cy="78" rx="66" ry="42" fill="#5f9a3f"/>
+        <ellipse cx="100" cy="95" rx="40" ry="30" fill="#6fae47"/>
+        <ellipse cx="205" cy="90" rx="42" ry="30" fill="#6fae47"/>
+        <g fill="#ffd7ea">
+          <circle cx="110" cy="70" r="6"/><circle cx="150" cy="55" r="6"/><circle cx="190" cy="72" r="6"/>
+          <circle cx="130" cy="95" r="6"/><circle cx="175" cy="98" r="6"/><circle cx="215" cy="85" r="6"/>
+          <circle cx="90" cy="100" r="6"/>
+        </g>
+        <g fill="#ff9fc4">
+          <circle cx="110" cy="70" r="2.5"/><circle cx="150" cy="55" r="2.5"/><circle cx="190" cy="72" r="2.5"/>
+          <circle cx="130" cy="95" r="2.5"/><circle cx="175" cy="98" r="2.5"/><circle cx="215" cy="85" r="2.5"/>
+          <circle cx="90" cy="100" r="2.5"/>
+        </g>
+      </g>
+      <g class="stage-group" id="stage6">
+        <path d="M150,270 C138,308 162,324 150,350" stroke="#e9ddc2" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C126,306 104,320 84,334" stroke="#e9ddc2" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,295 C174,306 196,320 216,334" stroke="#e9ddc2" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,318 L136,344" stroke="#e9ddc2" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,318 L164,344" stroke="#e9ddc2" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M150,230 C147,180 153,120 150,90" stroke="#6b4b2e" stroke-width="13" fill="none" stroke-linecap="round"/>
+        <path d="M150,145 C122,128 104,116 88,100" stroke="#6b4b2e" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M150,120 C178,104 198,92 216,76" stroke="#6b4b2e" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="150" cy="78" rx="66" ry="42" fill="#5f9a3f"/>
+        <ellipse cx="100" cy="95" rx="40" ry="30" fill="#6fae47"/>
+        <ellipse cx="205" cy="90" rx="42" ry="30" fill="#6fae47"/>
+        <g fill="#e8542f">
+          <circle cx="112" cy="78" r="8"/><circle cx="150" cy="60" r="8"/><circle cx="188" cy="80" r="8"/>
+          <circle cx="128" cy="102" r="8"/><circle cx="178" cy="104" r="8"/><circle cx="212" cy="92" r="8"/>
+          <circle cx="92" cy="105" r="8"/>
+        </g>
+        <g stroke="#4d3a20" stroke-width="1.5">
+          <line x1="112" y1="70" x2="112" y2="78"/><line x1="150" y1="52" x2="150" y2="60"/><line x1="188" y1="72" x2="188" y2="80"/>
+        </g>
+      </g>
+
+      <g class="hotspot" id="hotspot">
+        <circle class="ring" cx="150" cy="262" r="13"/>
+        <text x="150" y="263">i</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="status">
+    <div class="stage-name" id="stageName">Semilla</div>
+    <div class="stage-count" id="stageCount">Etapa 1 de 7</div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">Riego: 0%</div>
+  </div>
+
+  <div class="can-area">
+    <div class="drops" id="drops"></div>
+    <div class="watering-can" id="wateringCan">🚿</div>
+    <div class="can-hint" id="canHint">Mantén presionada la regadera para regar</div>
+  </div>
+
+  <p class="final-msg" id="finalMsg">🌳 ¡El árbol ya dio frutos! Ciclo completo.</p>
+
+  <div class="actions">
+    <button class="action secondary" id="restartAllBtn">↺ Empezar de nuevo (otra manzana)</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="popup">
+    <div class="emoji" id="popupEmoji"></div>
+    <h2 id="popupTitle"></h2>
+    <p id="popupText"></p>
+    <button id="popupClose">Continuar regando</button>
+  </div>
+</div>
+
+<script>
+  // =========================================================
+  // Pantallas
+  // =========================================================
+  const screens = {
+    apple: document.getElementById('appleScreen'),
+    seeds: document.getElementById('seedScreen'),
+    grow: document.getElementById('growScreen')
+  };
+  function showScreen(name){
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  const mainTitle = document.getElementById('mainTitle');
+  const mainSub = document.getElementById('mainSub');
+
+  // =========================================================
+  // PANTALLA 1: comerse la manzana
+  // =========================================================
+  const appleSvg = document.getElementById('appleSvg');
+  const biteCounter = document.getElementById('biteCounter');
+  const NOM_WORDS = ['¡Ñam!', '¡Ñom!', '¡Crunch!'];
+  const BITES_NEEDED = 6;
+  let bites = 0;
+
+  appleSvg.parentElement.addEventListener('click', (e) => {
+    if (bites >= BITES_NEEDED) return;
+    bites++;
+    const scale = 1 - (bites / BITES_NEEDED) * 0.75;
+    appleSvg.style.transform = `scale(${scale}) rotate(${(bites % 2 === 0 ? 6 : -6)}deg)`;
+
+    const float = document.createElement('div');
+    float.className = 'nom-float';
+    float.textContent = NOM_WORDS[bites % NOM_WORDS.length];
+    float.style.left = (40 + Math.random() * 100) + 'px';
+    float.style.top = (60 + Math.random() * 60) + 'px';
+    appleSvg.parentElement.appendChild(float);
+    setTimeout(() => float.remove(), 800);
+
+    if (bites >= BITES_NEEDED){
+      biteCounter.textContent = '¡Manzana terminada!';
+      appleSvg.style.opacity = '0';
+      setTimeout(() => {
+        mainTitle.textContent = '🌰 Recoge las semillas';
+        mainSub.textContent = '¡Toca cada semilla antes de que se caiga!';
+        showScreen('seeds');
+        startSeedGame();
+      }, 500);
+    } else {
+      biteCounter.textContent = `Mordidas: ${bites} / ${BITES_NEEDED}`;
+    }
+  });
+
+  // =========================================================
+  // PANTALLA 2: atrapar semillas
+  // =========================================================
+  const seedStage = document.getElementById('seedStage');
+  const seedCountEl = document.getElementById('seedCount');
+  const SEEDS_NEEDED = 3;
+  let seedsCaught = 0;
+
+  function startSeedGame(){
+    seedsCaught = 0;
+    seedCountEl.textContent = `Semillas recogidas: 0 / ${SEEDS_NEEDED}`;
+    seedStage.querySelectorAll('.seed').forEach(s => s.remove());
+    const positions = [20, 50, 80];
+    positions.forEach((leftPercent, i) => {
+      const seed = document.createElement('div');
+      seed.className = 'seed';
+      seed.style.left = leftPercent + '%';
+      seed.style.animationDelay = (i * 0.9) + 's';
+      seed.style.animationDuration = (5 + i * 0.6) + 's';
+      seed.addEventListener('click', () => catchSeed(seed));
+      seedStage.appendChild(seed);
+    });
+  }
+
+  function catchSeed(seed){
+    if (seed.dataset.caught) return;
+    seed.dataset.caught = '1';
+    const rect = seed.getBoundingClientRect();
+    const stageRect = seedStage.getBoundingClientRect();
+    seed.style.animation = 'none';
+    seed.style.top = (rect.top - stageRect.top) + 'px';
+    seed.style.left = (rect.left - stageRect.left) + 'px';
+    seed.style.transition = 'all 0.5s ease';
+    requestAnimationFrame(() => {
+      seed.style.top = '78%';
+      seed.style.left = '50%';
+      seed.style.transform = 'scale(0.3)';
+      seed.style.opacity = '0';
+    });
+    setTimeout(() => seed.remove(), 500);
+
+    seedsCaught++;
+    seedCountEl.textContent = `Semillas recogidas: ${seedsCaught} / ${SEEDS_NEEDED}`;
+    if (seedsCaught >= SEEDS_NEEDED){
+      setTimeout(() => {
+        mainTitle.textContent = '🌱 De semilla a árbol';
+        mainSub.textContent = 'Riega la planta hasta llenar la barra para que crezca.';
+        showScreen('grow');
+        startGrowth();
+      }, 600);
+    }
+  }
+
+  // =========================================================
+  // PANTALLA 3: sembrar y regar
+  // =========================================================
+  const STAGES = [
+    { id: 'stage0', name: 'Semilla', emoji: '🌰', hotspot: {x:150,y:262},
+      text: 'La semilla está enterrada, guardando todo lo necesario para empezar: alimento de reserva y la información para convertirse en planta.' },
+    { id: 'stage1', name: 'Germinación', emoji: '💧', hotspot: {x:150,y:290},
+      text: 'La semilla absorbió agua, se hinchó y su cubierta se rompió. La raíz es lo primero en salir, buscando agua en la tierra.' },
+    { id: 'stage2', name: 'Brote', emoji: '🌱', hotspot: {x:150,y:200},
+      text: 'El tallo empujó hacia arriba buscando la luz del sol. Las primeras hojitas (cotiledones) se abrieron para producir alimento.' },
+    { id: 'stage3', name: 'Planta joven', emoji: '🌿', hotspot: {x:150,y:150},
+      text: 'Aparecieron las primeras hojas verdaderas. La raíz se ramificó bajo tierra para sostener mejor a la planta y absorber más agua.' },
+    { id: 'stage4', name: 'Árbol joven', emoji: '🌳', hotspot: {x:150,y:100},
+      text: 'El tallo se volvió más grueso y leñoso, empezaron a salir ramas, y la raíz principal creció más profunda y fuerte.' },
+    { id: 'stage5', name: 'Árbol con flores', emoji: '🌸', hotspot: {x:150,y:70},
+      text: 'El árbol ya tiene una copa frondosa. Le salieron flores, que son la forma en que muchas plantas se reproducen.' },
+    { id: 'stage6', name: 'Árbol con frutos', emoji: '🍎', hotspot: {x:150,y:70},
+      text: 'Las flores polinizadas se convirtieron en frutos, que guardan nuevas semillas listas para comenzar el ciclo otra vez.' }
+  ];
+  const WATER_PER_TICK = 3;      // % que sube cada 100ms mientras se mantiene presionada la regadera
+  const TICK_MS = 100;
+
+  const groups = STAGES.map(s => document.getElementById(s.id));
+  const hotspot = document.getElementById('hotspot');
+  const hotspotCircle = hotspot.querySelector('circle');
+  const hotspotText = hotspot.querySelector('text');
+  const stageName = document.getElementById('stageName');
+  const stageCount = document.getElementById('stageCount');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressWrap = document.getElementById('progressWrap');
+  const wateringCan = document.getElementById('wateringCan');
+  const canHint = document.getElementById('canHint');
+  const drops = document.getElementById('drops');
+  const finalMsg = document.getElementById('finalMsg');
+
+  let current = 0;
+  let progress = 0;
+  let wateringInterval = null;
+  let dropInterval = null;
+  let locked = false; // se bloquea mientras el popup de una etapa completada está abierto
+
+  function startGrowth(){
+    current = 0;
+    progress = 0;
+    locked = false;
+    finalMsg.style.display = 'none';
+    progressWrap.style.display = 'block';
+    wateringCan.style.display = 'block';
+    canHint.style.display = 'block';
+    renderStageVisual();
+    updateProgressUI();
+  }
+
+  function renderStageVisual(){
+    groups.forEach((g, i) => g.classList.toggle('active', i === current));
+    const s = STAGES[current];
+    stageName.textContent = s.name;
+    stageCount.textContent = `Etapa ${current + 1} de ${STAGES.length}`;
+    hotspotCircle.setAttribute('cx', s.hotspot.x);
+    hotspotCircle.setAttribute('cy', s.hotspot.y);
+    hotspotText.setAttribute('x', s.hotspot.x);
+    hotspotText.setAttribute('y', s.hotspot.y + 1);
+  }
+
+  function updateProgressUI(){
+    progressFill.style.width = progress + '%';
+    progressLabel.textContent = `Riego: ${Math.round(progress)}%`;
+  }
+
+  function spawnDrop(){
+    const drop = document.createElement('div');
+    drop.className = 'drop';
+    drop.style.left = (40 + Math.random() * 20) + '%';
+    drops.appendChild(drop);
+    setTimeout(() => drop.remove(), 500);
+  }
+
+  function startWatering(){
+    if (locked || current >= STAGES.length - 1) return;
+    wateringCan.classList.add('active');
+    dropInterval = setInterval(spawnDrop, 150);
+    wateringInterval = setInterval(() => {
+      progress += WATER_PER_TICK;
+      if (progress >= 100){
+        progress = 100;
+        updateProgressUI();
+        stopWatering();
+        completeStage();
+        return;
+      }
+      updateProgressUI();
+    }, TICK_MS);
+  }
+
+  function stopWatering(){
+    wateringCan.classList.remove('active');
+    clearInterval(wateringInterval);
+    clearInterval(dropInterval);
+    wateringInterval = null;
+    dropInterval = null;
+  }
+
+  wateringCan.addEventListener('pointerdown', startWatering);
+  wateringCan.addEventListener('pointerup', stopWatering);
+  wateringCan.addEventListener('pointerleave', stopWatering);
+  wateringCan.addEventListener('pointercancel', stopWatering);
+
+  function completeStage(){
+    locked = true;
+    current++;
+    progress = 0;
+    renderStageVisual();
+    updateProgressUI();
+    openPopup(STAGES[current]);
+
+    if (current >= STAGES.length - 1){
+      progressWrap.style.display = 'none';
+      wateringCan.style.display = 'none';
+      canHint.style.display = 'none';
+      finalMsg.style.display = 'block';
+    }
+  }
+
+  // =========================================================
+  // Popup (info de la etapa)
+  // =========================================================
+  const overlay = document.getElementById('overlay');
+  const popupEmoji = document.getElementById('popupEmoji');
+  const popupTitle = document.getElementById('popupTitle');
+  const popupText = document.getElementById('popupText');
+
+  function openPopup(s){
+    popupEmoji.textContent = s.emoji;
+    popupTitle.textContent = s.name;
+    popupText.textContent = s.text;
+    overlay.classList.add('show');
+  }
+  function closePopup(){
+    overlay.classList.remove('show');
+    locked = false;
+  }
+  document.getElementById('popupClose').addEventListener('click', closePopup);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closePopup(); });
+
+  hotspot.addEventListener('click', () => openPopup(STAGES[current]));
+
+  // =========================================================
+  // Reiniciar todo el ciclo
+  // =========================================================
+  document.getElementById('restartAllBtn').addEventListener('click', () => {
+    stopWatering();
+    bites = 0;
+    appleSvg.style.opacity = '1';
+    appleSvg.style.transform = 'scale(1) rotate(0deg)';
+    biteCounter.textContent = 'Toca la manzana';
+    mainTitle.textContent = '🍎 De la manzana al árbol';
+    mainSub.textContent = 'Cómete la manzana para conseguir sus semillas.';
+    showScreen('apple');
+  });
+</script>
+
+</body>
+</html>
