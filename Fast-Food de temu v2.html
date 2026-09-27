@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puesto de Comida Fast-Food</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            margin: 0; padding: 0;
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        body {
+            background-color: #331800;
+            background-image: radial-gradient(#4a2608 15%, transparent 16%);
+            background-size: 20px 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        /* CONTENEDOR PRINCIPAL (RECETAS + JUEGO) */
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            max-width: 880px;
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* PANEL DE RECETAS (GUÍA AL LADO) */
+        .recipes-panel {
+            background: #fff8eb;
+            border: 5px solid #d97706;
+            border-radius: 24px;
+            padding: 18px;
+            width: 310px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .recipes-panel {
+                width: 100%;
+                max-width: 520px;
+            }
+        }
+
+        .recipes-panel h3 {
+            color: #b45309;
+            font-size: 18px;
+            margin-bottom: 12px;
+            text-align: center;
+            border-bottom: 3px dashed #f59e0b;
+            padding-bottom: 8px;
+        }
+
+        .recipe-card {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 14px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+
+        .recipe-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .recipe-title {
+            font-weight: 700;
+            color: #78350f;
+            font-size: 14px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .recipe-formula {
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            line-height: 1.5;
+        }
+
+        /* RESTAURANTE CONTAINER */
+        .restaurant {
+            background: #fff8eb;
+            width: 100%;
+            max-width: 520px;
+            border-radius: 24px;
+            border: 6px solid #d97706;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        /* PANEL SUPERIOR DE PUNTUACIÓN */
+        .header {
+            background: #b45309;
+            color: #fff;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #78350f;
+        }
+
+        .stat-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .money { color: #facc15; text-shadow: 1px 2px #78350f; }
+
+        /* ZONA DE CLIENTES Y MOSTRADOR */
+        .counter-area {
+            background: #fef3c7;
+            padding: 20px 15px;
+            min-height: 210px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            border-bottom: 8px solid #d97706;
+        }
+
+        .patience-bar-bg {
+            width: 90%;
+            height: 12px;
+            background: #fde68a;
+            border: 2px solid #b45309;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .patience-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: #22c55e;
+            transition: width 0.2s linear, background-color 0.3s;
+        }
+
+        /* GRUPO DE CLIENTES */
+        .customers-group {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .customer-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #ffffff;
+            padding: 10px;
+            border-radius: 16px;
+            border: 3px solid #f59e0b;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+            flex: 1;
+            max-width: 100px;
+            transition: transform 0.2s;
+        }
+
+        .customer-card.served {
+            opacity: 0.4;
+            filter: grayscale(1);
+            border-color: #cbd5e1;
+        }
+
+        .customer-avatar {
+            font-size: 36px;
+            margin-bottom: 4px;
+        }
+
+        .speech-bubble {
+            background: #f1f5f9;
+            border: 2px solid #64748b;
+            border-radius: 8px;
+            padding: 4px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            color: #1e293b;
+            width: 100%;
+        }
+
+        /* ZONA DE PREPARACIÓN / BANDEJA */
+        .prep-area {
+            padding: 20px 15px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .tray {
+            width: 100%;
+            min-height: 80px;
+            background: #f8fafc;
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tray-item {
+            background: #f1f5f9;
+            border: 2px solid #94a3b8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 13px;
+            color: #334155;
+            animation: popIn 0.15s ease-out;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.6); }
+            100% { transform: scale(1); }
+        }
+
+        /* BOTONES DE INGREDIENTES */
+        .ingredients-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+
+        .btn-ingredient {
+            background: #fff;
+            border: 3px solid #e2e8f0;
+            border-bottom-width: 6px;
+            border-radius: 16px;
+            padding: 10px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12px;
+            color: #334155;
+            transition: all 0.1s;
+        }
+
+        .btn-ingredient:active {
+            transform: translateY(3px);
+            border-bottom-width: 3px;
+        }
+
+        .btn-ingredient .icon { font-size: 24px; }
+
+        /* ACCIONES */
+        .actions-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+
+        .btn-action:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+        }
+
+        .btn-serve { background: #22c55e; color: #fff; }
+        .btn-trash { background: #ef4444; color: #fff; }
+
+        /* MENSAJE FLOTANTE DE FEEDBACK */
+        .feedback {
+            font-size: 14px;
+            font-weight: 700;
+            height: 20px;
+            color: #d97706;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- GUÍA DE RECETAS -->
+        <div class="recipes-panel">
+            <h3>📜 Orden de Recetas</h3>
+
+            <div class="recipe-card">
+                <div class="recipe-title">
+                    <span>🥪 Sándwich</span>
+                    <span>$15</span>
+                </div>
+                <div class="recipe-formula">
+                    🍞 Pan + 🧀 Jamón/Queso + 🍞 Pan = 🥪 Sándwich
+                </div>
+            </div>
+
+            <div class="recipe-card">
+                <div class="recipe-title">
+                    <span>🍔 Hamburguesa</span>
+                    <span>$25</span>
+                </div>
+                <div class="recipe-formula">
+                    🍞 Pan + 🥩 Carne + 🥬 Lechuga + 🍞 Pan = 🍔 Hamburguesa
+                </div>
+            </div>
+
+            <div class="recipe-card">
+                <div class="recipe-title">
+                    <span>🥤 Bebida</span>
+                    <span>$10</span>
+                </div>
+                <div class="recipe-formula">
+                    🥤 Vaso + 🧃 Refresco = 🥤 Bebida
+                </div>
+            </div>
+        </div>
+
+        <!-- JUEGO PRINCIPAL -->
+        <div class="restaurant">
+            <!-- HEADER -->
+            <div class="header">
+                <div class="stat-box money">💰 $<span id="moneyTxt">0</span></div>
+                <div class="stat-box">👥 Atendidos: <span id="servedCountTxt">0</span></div>
+            </div>
+
+            <!-- MOSTRADOR / CLIENTES -->
+            <div class="counter-area">
+                <div class="patience-bar-bg">
+                    <div class="patience-bar-fill" id="patienceBar"></div>
+                </div>
+
+                <div class="customers-group" id="customersGroup">
+                    <!-- Se genera dinámicamente -->
+                </div>
+
+                <div class="feedback" id="feedbackTxt">¡Prepara los pedidos de los clientes!</div>
+            </div>
+
+            <!-- ZONA DE PREPARACIÓN -->
+            <div class="prep-area">
+                <!-- BANDEJA ACTUAL -->
+                <div class="tray" id="tray">
+                    <span style="color: #cbd5e1; font-weight: 600;">Toca ingredientes para armar...</span>
+                </div>
+
+                <!-- INGREDIENTES -->
+                <div class="ingredients-grid">
+                    <button class="btn-ingredient" onclick="addIngredient('Pan')">
+                        <span class="icon">🍞</span> Pan
+                    </button>
+                    <button class="btn-ingredient" onclick="addIngredient('Jamón/Queso')">
+                        <span class="icon">🧀</span> Jamón/Queso
+                    </button>
+                    <button class="btn-ingredient" onclick="addIngredient('Carne')">
+                        <span class="icon">🥩</span> Carne
+                    </button>
+                    <button class="btn-ingredient" onclick="addIngredient('Lechuga')">
+                        <span class="icon">🥬</span> Lechuga
+                    </button>
+                    <button class="btn-ingredient" onclick="addIngredient('Vaso')">
+                        <span class="icon">🥤</span> Vaso
+                    </button>
+                    <button class="btn-ingredient" onclick="addIngredient('Refresco')">
+                        <span class="icon">🧃</span> Refresco
+                    </button>
+                </div>
+
+                <!-- ACCIONES -->
+                <div class="actions-row">
+                    <button class="btn-action btn-trash" onclick="clearTray()">🗑️ Tirar</button>
+                    <button class="btn-action btn-serve" onclick="serveOrder()">🔔 Entregar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // RECETAS DISPONIBLES Y SU ORDEN DE INGREDIENTES
+        const RECIPES = {
+            sandwich: {
+                name: "Sándwich",
+                icon: "🥪",
+                ingredients: ["Pan", "Jamón/Queso", "Pan"],
+                price: 15
+            },
+            burger: {
+                name: "Hamburguesa",
+                icon: "🍔",
+                ingredients: ["Pan", "Carne", "Lechuga", "Pan"],
+                price: 25
+            },
+            drink: {
+                name: "Bebida",
+                icon: "🥤",
+                ingredients: ["Vaso", "Refresco"],
+                price: 10
+            }
+        };
+
+        const AVATARS = ["👨", "👩", "👧", "👦", "🧔", "👵", "👴"];
+
+        // ESTADO DEL JUEGO
+        let money = 0;
+        let totalServed = 0;
+        let currentTray = [];
+        let currentGroup = [];
+        let patience = 100;
+        let patienceTimer = null;
+
+        // AÑADIR INGREDIENTE A LA BANDEJA
+        function addIngredient(ingredient) {
+            if (currentTray.length >= 6) return; // Límite máximo de ingredientes en bandeja
+            currentTray.push(ingredient);
+            renderTray();
+        }
+
+        // VACIAR BANDEJA
+        function clearTray() {
+            currentTray = [];
+            renderTray();
+            showFeedback("Bandeja vaciada", "#ef4444");
+        }
+
+        // RENDERIZAR BANDEJA
+        function renderTray() {
+            const trayEl = document.getElementById('tray');
+            if (currentTray.length === 0) {
+                trayEl.innerHTML = `<span style="color: #cbd5e1; font-weight: 600;">Toca ingredientes para armar...</span>`;
+                return;
+            }
+
+            trayEl.innerHTML = currentTray.map(ing => `<div class="tray-item">${ing}</div>`).join('');
+        }
+
+        // GENERAR NUEVO GRUPO DE CLIENTES (1 a 4 personas)
+        function spawnGroup() {
+            clearInterval(patienceTimer);
+            patience = 100;
+            updatePatienceBar();
+
+            // Tamaño del grupo al azar (1 a 4 personas)
+            const groupSize = Math.floor(Math.random() * 4) + 1;
+            const recipeKeys = Object.keys(RECIPES);
+
+            currentGroup = [];
+            for (let i = 0; i < groupSize; i++) {
+                const randomRecipeKey = recipeKeys[Math.floor(Math.random() * recipeKeys.length)];
+                const randomAvatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
+
+                currentGroup.push({
+                    id: i,
+                    avatar: randomAvatar,
+                    recipeKey: randomRecipeKey,
+                    served: false
+                });
+            }
+
+            renderGroup();
+            startPatienceTimer();
+            showFeedback(`¡Llegó un grupo de ${groupSize} ${groupSize === 1 ? 'persona' : 'personas'}!`, "#d97706");
+        }
+
+        // RENDERIZAR GRUPO EN PANTALLA
+        function renderGroup() {
+            const container = document.getElementById('customersGroup');
+            container.innerHTML = currentGroup.map(c => {
+                const recipe = RECIPES[c.recipeKey];
+                return `
+                    <div class="customer-card ${c.served ? 'served' : ''}">
+                        <div class="customer-avatar">${c.avatar}</div>
+                        <div class="speech-bubble">
+                            ${c.served ? '✅ ¡Listo!' : recipe.icon + ' ' + recipe.name}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // TIMER DE PACIENCIA COLECTIVA
+        function startPatienceTimer() {
+            const speed = 0.3 + (currentGroup.length * 0.05);
+
+            patienceTimer = setInterval(() => {
+                patience -= speed;
+                updatePatienceBar();
+
+                if (patience <= 0) {
+                    clearInterval(patienceTimer);
+                    groupLeftAngry();
+                }
+            }, 100);
+        }
+
+        function updatePatienceBar() {
+            const bar = document.getElementById('patienceBar');
+            bar.style.width = Math.max(0, patience) + '%';
+
+            if (patience > 50) bar.style.backgroundColor = '#22c55e';
+            else if (patience > 20) bar.style.backgroundColor = '#eab308';
+            else bar.style.backgroundColor = '#ef4444';
+        }
+
+        // ENTREGAR PEDIDO A ALGUN CLIENTE DEL GRUPO
+        function serveOrder() {
+            if (currentTray.length === 0) return;
+
+            // Buscar si la bandeja coincide con el pedido de algún cliente NO atendido aún
+            const targetCustomer = currentGroup.find(c => {
+                if (c.served) return false;
+                const recipe = RECIPES[c.recipeKey];
+                return arraysEqual(recipe.ingredients, currentTray);
+            });
+
+            if (targetCustomer) {
+                // Pedido correcto para este cliente
+                targetCustomer.served = true;
+                const recipe = RECIPES[targetCustomer.recipeKey];
+                money += recipe.price;
+                totalServed++;
+
+                updateStats();
+                renderGroup();
+                clearTray();
+                showFeedback(`¡${recipe.name} entregado! +$${recipe.price}`, "#22c55e");
+
+                // Verificar si todo el grupo ha sido atendido
+                if (currentGroup.every(c => c.served)) {
+                    clearInterval(patienceTimer);
+                    
+                    // Propina por velocidad
+                    const tip = Math.floor(patience / 10);
+                    if (tip > 0) {
+                        money += tip;
+                        updateStats();
+                        showFeedback(`¡Grupo satisfecho! Propina: +$${tip}`, "#16a34a");
+                    }
+
+                    setTimeout(spawnGroup, 1200);
+                }
+            } else {
+                showFeedback("Pedido incorrecto u orden equivocado", "#ef4444");
+            }
+        }
+
+        // SI LA PACIENCIA SE AGOTA
+        function groupLeftAngry() {
+            showFeedback("¡El grupo se fue molesto por la demora! -$10", "#ef4444");
+            money = Math.max(0, money - 10);
+            updateStats();
+            setTimeout(spawnGroup, 1500);
+        }
+
+        // UTILIDADES
+        function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) return false;
+            }
+            return true;
+        }
+
+        function updateStats() {
+            document.getElementById('moneyTxt').innerText = money;
+            document.getElementById('servedCountTxt').innerText = totalServed;
+        }
+
+        function showFeedback(msg, color) {
+            const fb = document.getElementById('feedbackTxt');
+            fb.innerText = msg;
+            fb.style.color = color;
+        }
+
+        // INICIAR JUEGO
+        spawnGroup();
+    </script>
+</body>
+</html>

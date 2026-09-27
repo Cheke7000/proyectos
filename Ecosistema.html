@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioForge - Simulador de Ecosistema Evolutivo y ADN</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030712;
+      font-family: 'Rajdhani', sans-serif;
+      color: #e2e8f0;
+    }
+
+    #bioCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Panel de Control Principal */
+    .ui-panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 10;
+      width: 320px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    .ui-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(52, 211, 153, 0.2);
+      padding-bottom: 8px;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      color: #34d399;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(52, 211, 153, 0.4);
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.95rem;
+      color: #00f3ff;
+      margin-top: 2px;
+    }
+
+    .controls-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: #34d399;
+      cursor: pointer;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .btn {
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: #34d399;
+      padding: 7px;
+      border-radius: 8px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .btn:hover, .btn.active {
+      background: rgba(52, 211, 153, 0.3);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+    }
+
+    .btn-danger {
+      background: rgba(248, 113, 113, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+      color: #f87171;
+    }
+
+    .btn-danger:hover {
+      background: rgba(248, 113, 113, 0.35);
+      box-shadow: 0 0 12px rgba(248, 113, 113, 0.4);
+    }
+
+    /* Modificador de ADN e Inspector */
+    .inspector-panel {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 10;
+      width: 280px;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      border-radius: 16px;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    .inspector-panel.active {
+      display: flex;
+    }
+
+    .inspector-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.9rem;
+      color: #00f3ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .close-btn {
+      cursor: pointer;
+      color: #f87171;
+      font-weight: bold;
+    }
+
+    .dna-slider {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* Aviso de Audio */
+    .audio-tag {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      font-size: 0.75rem;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="bioCanvas"></canvas>
+
+  <!-- UI Izquierda: Controles del Ecosistema -->
+  <div class="ui-panel">
+    <div class="ui-header">
+      <h1>BIOFORGE LAB</h1>
+      <span style="font-size: 0.7rem; color: #34d399;">v1.0</span>
+    </div>
+
+    <div class="stats-container">
+      <div class="stat-box">
+        <div>Población</div>
+        <div class="stat-val" id="popVal">0</div>
+      </div>
+      <div class="stat-box">
+        <div>Generación Máx</div>
+        <div class="stat-val" id="genVal">1</div>
+      </div>
+      <div class="stat-box">
+        <div>HerBívoros</div>
+        <div class="stat-val" style="color:#34d399;" id="herbVal">0</div>
+      </div>
+      <div class="stat-box">
+        <div>Depredadores</div>
+        <div class="stat-val" style="color:#f87171;" id="predVal">0</div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <label>Temperatura Global: <span id="tempText" style="color:#00f3ff">22°C</span></label>
+      <input type="range" id="tempSlider" min="-10" max="55" value="22">
+    </div>
+
+    <div class="controls-section">
+      <label>Modo de Puntero (Clic):</label>
+      <div class="btn-grid">
+        <button class="btn active" id="toolFeed">🌱 Comida</button>
+        <button class="btn" id="toolVirus">☣️ Virus</button>
+        <button class="btn" id="toolSpawn">🧬 Espécimen</button>
+        <button class="btn" id="toolInspect">🔍 Inspeccionar</button>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <button class="btn btn-danger" id="btnExtinction">☄️ Provocar Extinción</button>
+      <button class="btn" id="btnAudioToggle" style="margin-top: 4px;">🔊 Audio Paisaje: ON</button>
+    </div>
+  </div>
+
+  <!-- UI Derecha: Editor de ADN del Espécimen Seleccionado -->
+  <div class="inspector-panel" id="inspector">
+    <div class="inspector-title">
+      <span>EDITOR DE ADN</span>
+      <span class="close-btn" id="closeInspector">✕</span>
+    </div>
+    <div style="font-size:0.75rem; color:#9ca3af;" id="specimenGen">Genoma Espécimen #0</div>
+
+    <div class="dna-slider">
+      <label>Tamaño <span id="valSize">0</span></label>
+      <input type="range" id="dnaSize" min="4" max="18" step="0.5">
+    </div>
+    <div class="dna-slider">
+      <label>Velocidad <span id="valSpeed">0</span></label>
+      <input type="range" id="dnaSpeed" min="0.5" max="4.5" step="0.1">
+    </div>
+    <div class="dna-slider">
+      <label>Visión <span id="valVision">0</span></label>
+      <input type="range" id="dnaVision" min="30" max="220" step="5">
+    </div>
+    <div class="dna-slider">
+      <label>Agresividad (Dieta) <span id="valAggro">0</span></label>
+      <input type="range" id="dnaAggro" min="0" max="1" step="0.05">
+    </div>
+    <div class="dna-slider">
+      <label>Tasa Mutación <span id="valMut">0</span></label>
+      <input type="range" id="dnaMut" min="0.01" max="0.5" step="0.01">
+    </div>
+  </div>
+
+  <div class="audio-tag">Toca o haz clic para interactuar con la sopa primordial</div>
+
+  <script>
+    const canvas = document.getElementById('bioCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- PARÁMETROS GLOBALES ---
+    let globalTemp = 22; // grados Celsius
+    let activeTool = 'feed'; // 'feed', 'virus', 'spawn', 'inspect'
+    let selectedCreature = null;
+    let maxGen = 1;
+    let audioEnabled = true;
+
+    // --- CLASE COMIDA / NUTRIENTE ---
+    class Food {
+      constructor(x, y) {
+        this.x = x || Math.random() * width;
+        this.y = y || Math.random() * height;
+        this.radius = Math.random() * 2 + 1.5;
+        this.energy = this.radius * 12;
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#34d399';
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = '#34d399';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // --- CLASE VIRUS ---
+    class Virus {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 12;
+        this.life = 600; // Frames de vida
+      }
+
+      update() {
+        this.life--;
+        this.radius += Math.sin(Date.now() * 0.01) * 0.1;
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, Math.max(this.radius, 2), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    // --- CLASE CRIATURA Y ADN ---
+    class Creature {
+      constructor(x, y, dna = null, generation = 1) {
+        this.x = x || Math.random() * width;
+        this.y = y || Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.generation = generation;
+        this.age = 0;
+        this.energy = 100;
+        this.infected = false;
+
+        // ADN Genético
+        this.dna = dna || {
+          size: Math.random() * 6 + 5,        // 4 a 18
+          speed: Math.random() * 2 + 1,       // 0.5 a 4.5
+          vision: Math.random() * 80 + 50,    // 30 a 220
+          aggression: Math.random(),          // 0 (herbívoro puro) a 1 (depredador)
+          mutationRate: 0.05                 // 0.01 a 0.5
+        };
+
+        if (this.generation > maxGen) maxGen = this.generation;
+      }
+
+      get isPredator() {
+        return this.dna.aggression > 0.55;
+      }
+
+      getColor() {
+        if (this.infected) return '#ec4899'; // Rosa infeccioso
+        if (this.isPredator) {
+          // Tono rojo/naranja proporcional a la agresividad
+          return `hsl(${10 - (this.dna.aggression * 20)}, 90%, 60%)`;
+        } else {
+          // Tono azul/verde para herbívoros
+          return `hsl(${170 + (this.dna.size * 5)}, 80%, 55%)`;
+        }
+      }
+
+      update(foods, creatures, viruses) {
+        this.age++;
+
+        // 1. Costo metabólico según tamaño, velocidad y temperatura
+        let tempCost = 1;
+        if (globalTemp < 5) {
+          // Frío extremo: perjudica más a los pequeños
+          tempCost = 1 + (15 - this.dna.size) * 0.05;
+        } else if (globalTemp > 38) {
+          // Calor extremo: perjudica más a los grandes
+          tempCost = 1 + (this.dna.size) * 0.04;
+        }
+
+        const metabolicCost = (0.04 + (this.dna.size * 0.01) + (this.dna.speed * 0.03)) * tempCost;
+        this.energy -= metabolicCost;
+
+        // 2. Comportamiento (IA impulsada por ADN)
+        let target = null;
+        let minDist = this.dna.vision;
+
+        if (this.isPredator) {
+          // Buscar presas (herbívoros o criaturas más pequeñas)
+          for (let other of creatures) {
+            if (other !== this && !other.isPredator && other.dna.size < this.dna.size * 1.1) {
+              let d = Math.hypot(other.x - this.x, other.y - this.y);
+              if (d < minDist) {
+                minDist = d;
+                target = other;
+              }
+            }
+          }
+        } else {
+          // Herbívoro: buscar comida
+          for (let f of foods) {
+            let d = Math.hypot(f.x - this.x, f.y - this.y);
+            if (d < minDist) {
+              minDist = d;
+              target = f;
+            }
+          }
+        }
+
+        // Moverse hacia el objetivo o vagar
+        if (target) {
+          let angle = Math.atan2(target.y - this.y, target.x - this.x);
+          this.vx += Math.cos(angle) * 0.2;
+          this.vy += Math.sin(angle) * 0.2;
+        } else {
+          this.vx += (Math.random() - 0.5) * 0.3;
+          this.vy += (Math.random() - 0.5) * 0.3;
+        }
+
+        // Limitar velocidad máxima según ADN
+        let currentSpeed = Math.hypot(this.vx, this.vy);
+        if (currentSpeed > this.dna.speed) {
+          this.vx = (this.vx / currentSpeed) * this.dna.speed;
+          this.vy = (this.vy / currentSpeed) * this.dna.speed;
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Limites de pantalla suave
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+
+        // 3. Infección por virus
+        for (let v of viruses) {
+          if (Math.hypot(v.x - this.x, v.y - this.y) < v.radius + this.dna.size) {
+            this.infected = true;
+            if (Math.random() < 0.1) this.mutateDNA(); // Mutaciones caóticas por infección
+          }
+        }
+
+        if (this.infected) this.energy -= 0.1;
+      }
+
+      mutateDNA() {
+        const rate = this.dna.mutationRate;
+        return {
+          size: Math.min(Math.max(this.dna.size + (Math.random() - 0.5) * 2 * rate * 5, 4), 18),
+          speed: Math.min(Math.max(this.dna.speed + (Math.random() - 0.5) * rate * 2, 0.5), 4.5),
+          vision: Math.min(Math.max(this.dna.vision + (Math.random() - 0.5) * 30 * rate, 30), 220),
+          aggression: Math.min(Math.max(this.dna.aggression + (Math.random() - 0.5) * rate, 0), 1),
+          mutationRate: Math.min(Math.max(this.dna.mutationRate + (Math.random() - 0.5) * 0.02, 0.01), 0.5)
+        };
+      }
+
+      reproduce() {
+        if (this.energy > 180) {
+          this.energy -= 90;
+          playBioSound('reproduce');
+          const childDNA = this.mutateDNA();
+          return new Creature(this.x + (Math.random() - 0.5) * 20, this.y + (Math.random() - 0.5) * 20, childDNA, this.generation + 1);
+        }
+        return null;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // Halo de visión si está seleccionada
+        if (selectedCreature === this) {
+          ctx.beginPath();
+          ctx.arc(0, 0, this.dna.vision, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0, 243, 255, 0.25)';
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Cuerpo de la criatura
+        ctx.beginPath();
+        ctx.arc(0, 0, this.dna.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.getColor();
+        ctx.shadowBlur = this.isPredator ? 12 : 6;
+        ctx.shadowColor = this.getColor();
+        ctx.fill();
+
+        // Flagelos o apéndices
+        let angle = Math.atan2(this.vy, this.vx);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-Math.cos(angle) * (this.dna.size + 6), -Math.sin(angle) * (this.dna.size + 6));
+        ctx.strokeStyle = this.getColor();
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    // --- SIMULACIÓN Y LISTAS ---
+    let creatures = [];
+    let foods = [];
+    let viruses = [];
+
+    function initEcosystem() {
+      creatures = [];
+      foods = [];
+      viruses = [];
+      for (let i = 0; i < 45; i++) creatures.push(new Creature());
+      for (let i = 0; i < 90; i++) foods.push(new Food());
+    }
+    initEcosystem();
+
+    // --- SINTETIZADOR DE AUDIO PROCESAL (Web Audio API) ---
+    let audioCtx = null;
+    let ambientDrone = null;
+    let droneGain = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Drone de fondo ambiental
+        ambientDrone = audioCtx.createOscillator();
+        droneGain = audioCtx.createGain();
+
+        ambientDrone.type = 'sine';
+        ambientDrone.frequency.setValueAtTime(65.41, audioCtx.currentTime); // C2
+
+        droneGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+
+        ambientDrone.connect(droneGain);
+        droneGain.connect(audioCtx.destination);
+        ambientDrone.start();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playBioSound(type) {
+      if (!audioEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'eat') {
+        osc.frequency.setValueAtTime(300 + Math.random() * 200, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      } else if (type === 'reproduce') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } else if (type === 'extinction') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.8);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.8);
+      }
+    }
+
+    // Adaptar audio ambiental según estado del ecosistema
+    function updateAudioLandscape() {
+      if (!audioCtx || !droneGain) return;
+      const totalPop = creatures.length;
+      if (totalPop === 0) {
+        // Acorde disonante de extinción
+        droneGain.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.5);
+      } else {
+        // Tono más alto cuanto más sobrepoblado esté
+        const targetFreq = 60 + Math.min(totalPop * 1.5, 300);
+        ambientDrone.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 1);
+      }
+    }
+
+    // --- INTERACCIÓN Y EVENTOS ---
+    canvas.addEventListener('click', (e) => {
+      initAudio();
+      const x = e.clientX;
+      const y = e.clientY;
+
+      if (activeTool === 'feed') {
+        for (let i = 0; i < 8; i++) {
+          foods.push(new Food(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 30));
+        }
+      } else if (activeTool === 'virus') {
+        viruses.push(new Virus(x, y));
+      } else if (activeTool === 'spawn') {
+        creatures.push(new Creature(x, y));
+      } else if (activeTool === 'inspect') {
+        // Seleccionar criatura más cercana
+        let closest = null;
+        let minDist = 40;
+        for (let c of creatures) {
+          let d = Math.hypot(c.x - x, c.y - y);
+          if (d < minDist) {
+            minDist = d;
+            closest = c;
+          }
+        }
+        selectedCreature = closest;
+        updateInspectorUI();
+      }
+    });
+
+    // --- BUCLE PRINCIPAL ---
+    function loop() {
+      // 1. Fondo según temperatura global
+      let bgRed = Math.min(Math.max((globalTemp - 20) * 3, 0), 40);
+      let bgBlue = Math.min(Math.max((20 - globalTemp) * 3, 0), 40);
+      ctx.fillStyle = `rgb(${3 + bgRed}, 7, ${18 + bgBlue})`;
+      ctx.fillRect(0, 0, width, height);
+
+      // Reponer comida automáticamente
+      if (foods.length < 80) {
+        foods.push(new Food());
+      }
+
+      // 2. Actualizar y dibujar alimentos
+      for (let f of foods) f.draw();
+
+      // 3. Actualizar y dibujar virus
+      for (let i = viruses.length - 1; i >= 0; i--) {
+        let v = viruses[i];
+        v.update();
+        v.draw();
+        if (v.life <= 0) viruses.splice(i, 1);
+      }
+
+      // 4. Actualizar y dibujar criaturas
+      let herbCount = 0;
+      let predCount = 0;
+      let newCreatures = [];
+
+      for (let i = creatures.length - 1; i >= 0; i--) {
+        let c = creatures[i];
+        c.update(foods, creatures, viruses);
+        c.draw();
+
+        if (c.isPredator) predCount++; else herbCount++;
+
+        // Comer alimento (HerBívoros)
+        if (!c.isPredator) {
+          for (let j = foods.length - 1; j >= 0; j--) {
+            if (Math.hypot(foods[j].x - c.x, foods[j].y - c.y) < c.dna.size + foods[j].radius) {
+              c.energy += foods[j].energy;
+              foods.splice(j, 1);
+              playBioSound('eat');
+              break;
+            }
+          }
+        } else {
+          // Depredador cazando otras criaturas más pequeñas
+          for (let j = creatures.length - 1; j >= 0; j--) {
+            let victim = creatures[j];
+            if (victim !== c && !victim.isPredator && Math.hypot(victim.x - c.x, victim.y - c.y) < c.dna.size) {
+              c.energy += victim.energy * 0.75;
+              creatures.splice(j, 1);
+              playBioSound('eat');
+              break;
+            }
+          }
+        }
+
+        // Reproducción
+        let offspring = c.reproduce();
+        if (offspring) newCreatures.push(offspring);
+
+        // Muerte por falta de energía o edad
+        if (c.energy <= 0 || c.age > 3000) {
+          if (selectedCreature === c) {
+            selectedCreature = null;
+            updateInspectorUI();
+          }
+          creatures.splice(i, 1);
+        }
+      }
+
+      creatures.push(...newCreatures);
+
+      // Limitar población máxima para mantener fluidez
+      if (creatures.length > 250) creatures.splice(0, 20);
+
+      // 5. Actualizar interfaz de estadísticas
+      document.getElementById('popVal').innerText = creatures.length;
+      document.getElementById('genVal').innerText = maxGen;
+      document.getElementById('herbVal').innerText = herbCount;
+      document.getElementById('predVal').innerText = predCount;
+
+      updateAudioLandscape();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+
+    // --- CONTROLES DE LA UI ---
+    document.getElementById('tempSlider').oninput = (e) => {
+      globalTemp = parseInt(e.target.value);
+      document.getElementById('tempText').innerText = `${globalTemp}°C`;
+    };
+
+    const tools = [
+      { id: 'toolFeed', name: 'feed' },
+      { id: 'toolVirus', name: 'virus' },
+      { id: 'toolSpawn', name: 'spawn' },
+      { id: 'toolInspect', name: 'inspect' }
+    ];
+
+    tools.forEach(t => {
+      document.getElementById(t.id).onclick = (e) => {
+        activeTool = t.name;
+        tools.forEach(o => document.getElementById(o.id).classList.remove('active'));
+        e.target.classList.add('active');
+      };
+    });
+
+    document.getElementById('btnExtinction').onclick = () => {
+      playBioSound('extinction');
+      creatures = creatures.slice(0, Math.floor(creatures.length * 0.1)); // Elimina el 90%
+      viruses.push(new Virus(width / 2, height / 2));
+    };
+
+    document.getElementById('btnAudioToggle').onclick = (e) => {
+      audioEnabled = !audioEnabled;
+      e.target.innerText = audioEnabled ? '🔊 Audio Paisaje: ON' : '🔇 Audio Paisaje: OFF';
+    };
+
+    // --- INSPECTOR Y EDITOR DE ADN ---
+    const inspectorEl = document.getElementById('inspector');
+    document.getElementById('closeInspector').onclick = () => {
+      selectedCreature = null;
+      inspectorEl.classList.remove('active');
+    };
+
+    function updateInspectorUI() {
+      if (!selectedCreature) {
+        inspectorEl.classList.remove('active');
+        return;
+      }
+      inspectorEl.classList.add('active');
+      document.getElementById('specimenGen').innerText = `Espécimen Gen #${selectedCreature.generation} (${selectedCreature.isPredator ? 'Depredador' : 'Herbívoro'})`;
+
+      bindDnaInput('dnaSize', 'valSize', 'size');
+      bindDnaInput('dnaSpeed', 'valSpeed', 'speed');
+      bindDnaInput('dnaVision', 'valVision', 'vision');
+      bindDnaInput('dnaAggro', 'valAggro', 'aggression');
+      bindDnaInput('dnaMut', 'valMut', 'mutationRate');
+    }
+
+    function bindDnaInput(inputId, valId, dnaKey) {
+      const input = document.getElementById(inputId);
+      const valText = document.getElementById(valId);
+
+      input.value = selectedCreature.dna[dnaKey];
+      valText.innerText = Number(selectedCreature.dna[dnaKey]).toFixed(2);
+
+      input.oninput = (e) => {
+        if (selectedCreature) {
+          selectedCreature.dna[dnaKey] = parseFloat(e.target.value);
+          valText.innerText = Number(selectedCreature.dna[dnaKey]).toFixed(2);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

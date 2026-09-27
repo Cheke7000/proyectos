@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mascota Virtual - Tamagotchi Retro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            margin: 0; padding: 0;
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        body {
+            background-color: #1e1b4b;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* CARCASA DEL TAMAGOTCHI */
+        .device {
+            background: linear-gradient(145deg, #ec4899, #be185d);
+            width: 340px;
+            padding: 30px 20px 40px;
+            border-radius: 170px 170px 140px 140px;
+            box-shadow: 0 15px 0 #831843, 0 25px 40px rgba(0,0,0,0.6);
+            border: 6px solid #fbcfe8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .brand-title {
+            color: #fef08a;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px #9d174d;
+            letter-spacing: 1px;
+        }
+
+        /* PANTALLA LCD */
+        .screen-frame {
+            background: #9d174d;
+            padding: 15px;
+            border-radius: 20px;
+            border: 4px solid #701a75;
+            width: 100%;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .lcd-screen {
+            background-color: #879b76; /* Verde LCD retro */
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: inset 3px 3px 8px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            border: 3px solid #4d5843;
+        }
+
+        /* BARRAS DE ESTADO */
+        .stats-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+            font-size: 8px;
+            color: #1a2e05;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-bar-bg {
+            width: 110px;
+            height: 10px;
+            background-color: #6b7c5d;
+            border: 1px solid #1a2e05;
+            padding: 1px;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            background-color: #1a2e05;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+
+        /* CANVAS DE LA MASCOTA */
+        canvas {
+            image-rendering: pixelated;
+            margin: 10px 0;
+            background-color: transparent;
+        }
+
+        .status-message {
+            font-size: 7px;
+            color: #1a2e05;
+            text-align: center;
+            min-height: 20px;
+            line-height: 1.4;
+        }
+
+        /* BOTONES DE ACCIÓN */
+        .buttons-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 25px;
+            padding: 0 10px;
+        }
+
+        .btn-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+        }
+
+        .btn-feed { background-color: #fef08a; border: 3px solid #ca8a04; }
+        .btn-play { background-color: #67e8f9; border: 3px solid #0891b2; }
+        .btn-sleep { background-color: #c084fc; border: 3px solid #7e22ce; }
+
+        .btn-label {
+            font-size: 7px;
+            color: #fef08a;
+            text-shadow: 1px 1px #831843;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="device">
+        <div class="brand-title">POCKET PET</div>
+
+        <div class="screen-frame">
+            <div class="lcd-screen" id="lcdScreen">
+                <!-- BARRAS DE ESTADO -->
+                <div class="stats-container">
+                    <div class="stat-row">
+                        <span>HAMBRE</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill" id="barHunger"></div></div>
+                    </div>
+                    <div class="stat-row">
+                        <span>JUEGO</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill" id="barHappiness"></div></div>
+                    </div>
+                    <div class="stat-row">
+                        <span>SUEÑO</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill" id="barEnergy"></div></div>
+                    </div>
+                </div>
+
+                <!-- MASCOTA ANIMADA -->
+                <canvas id="petCanvas" width="96" height="80"></canvas>
+
+                <!-- MENSAJES -->
+                <div class="status-message" id="statusTxt">¡Hola! Soy tu nueva mascota.</div>
+            </div>
+        </div>
+
+        <!-- BOTONES PRINCIPALES -->
+        <div class="buttons-container">
+            <div class="btn-wrapper">
+                <button class="btn btn-feed" id="btnFeed" onclick="actionFeed()">🍎</button>
+                <span class="btn-label">COMER</span>
+            </div>
+            <div class="btn-wrapper">
+                <button class="btn btn-play" id="btnPlay" onclick="actionPlay()">🎮</button>
+                <span class="btn-label">JUGAR</span>
+            </div>
+            <div class="btn-wrapper">
+                <button class="btn btn-sleep" id="btnSleep" onclick="actionSleep()">💤</button>
+                <span class="btn-label">DORMIR</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SAVE_KEY = 'pocket_pet_save_v1';
+
+        // ESTADO INICIAL
+        let pet = {
+            hunger: 100,
+            happiness: 100,
+            energy: 100,
+            isSleeping: false,
+            isDead: false,
+            lastTick: Date.now()
+        };
+
+        // VARIABLES DE ANIMACIÓN Y ESTADO
+        let actionState = 'idle'; // 'idle', 'eating', 'playing', 'sleeping', 'dead'
+        let actionTimer = 0;
+        let animFrame = 0;
+
+        const canvas = document.getElementById('petCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- AUTOGUARDADO EN LOCALSTORAGE (SILENCIOSO) ---
+        function saveProgress() {
+            pet.lastTick = Date.now();
+            localStorage.setItem(SAVE_KEY, JSON.stringify(pet));
+        }
+
+        function loadProgress() {
+            const savedData = localStorage.getItem(SAVE_KEY);
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    const now = Date.now();
+                    const secondsPassed = Math.floor((now - parsed.lastTick) / 1000);
+
+                    pet = parsed;
+
+                    // Calcular el desgaste del tiempo que estuvo cerrado
+                    if (secondsPassed > 0 && !pet.isDead) {
+                        applyOfflineDecay(secondsPassed);
+                    }
+                    
+                    setMessage(`¡De vuelta! Pasaron ${Math.min(secondsPassed, 9999)}s.`);
+                } catch(e) {
+                    console.error("Error al cargar datos guardados.", e);
+                }
+            }
+        }
+
+        // Desgaste de atributos mientras el juego no estuvo abierto
+        function applyOfflineDecay(seconds) {
+            const decayRate = 0.15;
+
+            if (pet.isSleeping) {
+                pet.energy = Math.min(100, pet.energy + (seconds * 0.3));
+                pet.hunger = Math.max(0, pet.hunger - (seconds * (decayRate * 0.5)));
+            } else {
+                pet.hunger = Math.max(0, pet.hunger - (seconds * decayRate));
+                pet.happiness = Math.max(0, pet.happiness - (seconds * decayRate));
+                pet.energy = Math.max(0, pet.energy - (seconds * (decayRate * 0.8)));
+            }
+
+            checkHealth();
+        }
+
+        // --- ACCIONES ---
+        function actionFeed() {
+            if (pet.isDead || pet.isSleeping) return;
+            pet.hunger = Math.min(100, pet.hunger + 25);
+            actionState = 'eating';
+            actionTimer = 12;
+            setMessage("¡Ñam ñam! Delicioso.");
+            updateUI();
+            saveProgress();
+        }
+
+        function actionPlay() {
+            if (pet.isDead || pet.isSleeping) return;
+            if (pet.energy < 15) {
+                setMessage("Demasiado cansado para jugar...");
+                return;
+            }
+            pet.happiness = Math.min(100, pet.happiness + 25);
+            pet.energy = Math.max(0, pet.energy - 12);
+            actionState = 'playing';
+            actionTimer = 12;
+            setMessage("¡Yay! ¡Qué divertido!");
+            updateUI();
+            saveProgress();
+        }
+
+        function actionSleep() {
+            if (pet.isDead) return;
+            pet.isSleeping = !pet.isSleeping;
+            if (pet.isSleeping) {
+                actionState = 'sleeping';
+                setMessage("Zzz... Durmiendo...");
+            } else {
+                actionState = 'idle';
+                setMessage("¡Buenos días!");
+            }
+            updateUI();
+            saveProgress();
+        }
+
+        function checkHealth() {
+            if (pet.hunger <= 0 && pet.happiness <= 0) {
+                pet.isDead = true;
+                actionState = 'dead';
+                setMessage("Tu mascota ha enfermado :(");
+            }
+        }
+
+        function setMessage(msg) {
+            document.getElementById('statusTxt').innerText = msg;
+        }
+
+        function updateUI() {
+            document.getElementById('barHunger').style.width = pet.hunger + '%';
+            document.getElementById('barHappiness').style.width = pet.happiness + '%';
+            document.getElementById('barEnergy').style.width = pet.energy + '%';
+
+            const lcd = document.getElementById('lcdScreen');
+            if (pet.isSleeping) {
+                lcd.style.backgroundColor = '#4d5843';
+            } else {
+                lcd.style.backgroundColor = '#879b76';
+            }
+        }
+
+        // --- BUCLE PRINCIPAL DE LÓGICA ---
+        setInterval(() => {
+            if (pet.isDead) return;
+
+            if (pet.isSleeping) {
+                pet.energy = Math.min(100, pet.energy + 1.5);
+                pet.hunger = Math.max(0, pet.hunger - 0.1);
+                if (pet.energy >= 100) {
+                    pet.isSleeping = false;
+                    actionState = 'idle';
+                    setMessage("Despertó descansado.");
+                }
+            } else {
+                pet.hunger = Math.max(0, pet.hunger - 0.25);
+                pet.happiness = Math.max(0, pet.happiness - 0.2);
+                pet.energy = Math.max(0, pet.energy - 0.15);
+            }
+
+            if (actionTimer > 0) {
+                actionTimer--;
+                if (actionTimer === 0 && !pet.isSleeping) actionState = 'idle';
+            }
+
+            checkHealth();
+            updateUI();
+            saveProgress();
+        }, 1000);
+
+        // --- BUCLE DE RENDERIZADO PIXEL ART ---
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            animFrame++;
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2 + 5;
+            const bounce = Math.floor(Math.sin(animFrame * 0.15) * 2);
+
+            ctx.fillStyle = '#1a2e05';
+
+            if (pet.isDead) {
+                drawPixelMatrix(cx - 12, cy - 10, [
+                    [0,1,1,1,0],
+                    [1,0,0,0,1],
+                    [1,0,1,0,1],
+                    [1,1,1,1,1],
+                    [1,0,1,0,1],
+                    [1,0,0,0,1]
+                ], 4);
+                requestAnimationFrame(render);
+                return;
+            }
+
+            if (actionState === 'sleeping') {
+                drawPetBody(cx, cy + 4, 0);
+                if (Math.floor(animFrame / 20) % 2 === 0) {
+                    ctx.font = '8px "Press Start 2P"';
+                    ctx.fillText('z', cx + 18, cy - 8);
+                    ctx.fillText('Z', cx + 24, cy - 16);
+                }
+            } else if (actionState === 'eating') {
+                drawPetBody(cx, cy + bounce, 1);
+                ctx.fillRect(cx - 24, cy, 6, 6);
+            } else if (actionState === 'playing') {
+                drawPetBody(cx, cy + (animFrame % 10 < 5 ? -6 : 0), 2);
+                ctx.fillText('♥', cx + 16, cy - 12);
+            } else {
+                drawPetBody(cx, cy + bounce, 0);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        function drawPetBody(x, y, expression) {
+            const p = 3;
+
+            const sprite = [
+                [0,1,0,0,0,1,0],
+                [1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1],
+                [1,0,1,1,1,0,1],
+                [1,1,1,1,1,1,1],
+                [0,1,1,1,1,1,0],
+                [0,1,0,0,0,1,0]
+            ];
+
+            if (expression === 1) {
+                sprite[3] = [1,1,0,1,0,1,1];
+            } else if (expression === 2) {
+                sprite[3] = [1,0,1,1,1,0,1];
+            }
+
+            drawPixelMatrix(x - 10, y - 10, sprite, p);
+        }
+
+        function drawPixelMatrix(startX, startY, matrix, pixelSize) {
+            for (let r = 0; r < matrix.length; r++) {
+                for (let c = 0; c < matrix[r].length; c++) {
+                    if (matrix[r][c] === 1) {
+                        ctx.fillRect(startX + (c * pixelSize), startY + (r * pixelSize), pixelSize, pixelSize);
+                    }
+                }
+            }
+        }
+
+        // --- INICIALIZACIÓN ---
+        loadProgress();
+        updateUI();
+        render();
+    </script>
+</body>
+</html>
