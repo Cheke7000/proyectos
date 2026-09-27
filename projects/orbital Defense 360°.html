@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbital Defense 360° - Upgraded Edition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #080914;
+      color: #ffffff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Interfaz Superior (Estadísticas) */
+    .ui-top {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .ui-box {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      border-radius: 12px;
+      padding: 8px 16px;
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+      min-width: 100px;
+      text-align: center;
+    }
+    .stat-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #94a3b8;
+      letter-spacing: 1px;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #00f2fe;
+    }
+
+    /* Interfaz Inferior (Habilidad Especial y Tienda) */
+    .ui-bottom {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 5;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 95vw;
+    }
+    .action-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(0, 242, 254, 0.4);
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .action-btn:hover:not(:disabled) {
+      background: rgba(0, 242, 254, 0.2);
+      border-color: #00f2fe;
+      transform: translateY(-2px);
+    }
+    .action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: #475569;
+    }
+    .btn-cost {
+      font-size: 10px;
+      color: #ffd700;
+      margin-top: 2px;
+    }
+
+    /* Botón de Habilidad Especial con Barra de Carga */
+    #laser-btn {
+      position: relative;
+      overflow: hidden;
+      border-color: #ff0055;
+      min-width: 140px;
+    }
+    #laser-btn.ready {
+      box-shadow: 0 0 20px rgba(255, 0, 85, 0.6);
+      animation: pulse 1.5s infinite;
+    }
+    .cooldown-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: #ff0055;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+
+    /* Pantallas Overlay */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(8, 9, 20, 0.88);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      text-align: center;
+      padding: 20px;
+    }
+    .overlay h1 {
+      font-size: 42px;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+      text-shadow: 0 0 30px rgba(0, 242, 254, 0.4);
+    }
+    .overlay p {
+      color: #94a3b8;
+      font-size: 15px;
+      max-width: 480px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .btn-main {
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      color: #080914;
+      font-weight: bold;
+      font-size: 18px;
+      border: none;
+      padding: 12px 36px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-main:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(0, 242, 254, 0.7);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <!-- UI Superior -->
+    <div class="ui-top">
+      <div class="ui-box">
+        <div class="stat-title">Puntaje</div>
+        <div class="stat-value" id="score-text">0</div>
+      </div>
+      <div class="ui-box">
+        <div class="stat-title">Créditos</div>
+        <div class="stat-value" style="color: #ffd700;" id="credits-text">0 cr</div>
+      </div>
+      <div class="ui-box">
+        <div class="stat-title">Salud / Escudo</div>
+        <div class="stat-value" id="health-text">100%</div>
+      </div>
+      <div class="ui-box">
+        <div class="stat-title">Oleada</div>
+        <div class="stat-value" id="wave-text">1</div>
+      </div>
+    </div>
+
+    <!-- UI Inferior (Habilidad & Tienda) -->
+    <div class="ui-bottom">
+      <button id="laser-btn" class="action-btn" disabled>
+        <span>⚡ MEGA LÁSER</span>
+        <span class="btn-cost" id="laser-status">Cargando...</span>
+        <div id="laser-bar" class="cooldown-bar"></div>
+      </button>
+
+      <button id="buy-turret-btn" class="action-btn">
+        <span>🛰️ +1 Torreta</span>
+        <span class="btn-cost" id="turret-cost">300 cr</span>
+      </button>
+
+      <button id="buy-shield-btn" class="action-btn">
+        <span>🛡️ Escudo Planetario</span>
+        <span class="btn-cost">200 cr</span>
+      </button>
+
+      <button id="buy-firerate-btn" class="action-btn">
+        <span>🔥 Cadencia +25%</span>
+        <span class="btn-cost" id="firerate-cost">150 cr</span>
+      </button>
+    </div>
+
+    <!-- Pantalla de Inicio -->
+    <div id="start-overlay" class="overlay">
+      <h1>ORBITAL DEFENSE 360°</h1>
+      <p>
+        • Mueve el cursor o desliza el dedo para rotar las torretas orbitales.<br>
+        • Mantén presionado para disparar proyectiles.<br>
+        • Junta créditos para comprar más torretas y escudos.<br>
+        • Usa el <b>Mega Rayo Láser (Barra Espaciadora o Botón)</b> cada 10s.
+      </p>
+      <button class="btn-main" id="start-btn">INICIAR MISIÓN</button>
+    </div>
+
+    <!-- Pantalla de Fin de Juego -->
+    <div id="gameover-overlay" class="overlay hidden">
+      <h1 style="background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">PLANETA DESTRUIDO</h1>
+      <p id="final-stats">Sobreviviste 0 oleadas.</p>
+      <button class="btn-main" id="restart-btn">REINTENTAR</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    // --- SINTETIZADOR DE SONIDO (Web Audio API) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'laser') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now); osc.stop(now + 0.08);
+      } else if (type === 'megalaser') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(120, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'buy') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523, now);
+        osc.frequency.setValueAtTime(659, now + 0.08);
+        osc.frequency.setValueAtTime(783, now + 0.16);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now); osc.stop(now + 0.25);
+      } else if (type === 'explosion') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'hit') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now); osc.stop(now + 0.25);
+      }
+    }
+
+    // --- SETUP CANVAS ---
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, centerX, centerY;
+
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      centerX = width / 2;
+      centerY = height / 2;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // --- ESTADO DEL JUEGO & MEJORAS ---
+    let gameState = 'MENU';
+    let score = 0;
+    let credits = 0;
+    let planetHealth = 100;
+    let planetShield = 0; // Puntos de escudo extra
+    let wave = 1;
+    let spawnTimer = 0;
+    let mouseAngle = 0;
+    let isMouseDown = false;
+    let fireCooldown = 0;
+
+    // Estadísticas de Mejoras
+    let turretCount = 2;       // Inicia con 2 torretas (Máximo 4)
+    let fireRateDelay = 12;    // Frames entre disparos
+    const maxLaserCooldown = 600; // 10 segundos a 60 FPS
+    let laserCooldown = 0;     // Contador de recarga del láser
+    let laserActiveTime = 0;   // Duración del mega láser (150 frames = 2.5s)
+
+    // Configuración Orbital
+    const planetRadius = 45;
+    const orbitRadius = 110;
+
+    // Entidades
+    let bullets = [];
+    let enemies = [];
+    let particles = [];
+    let stars = [];
+
+    function createStars() {
+      stars = [];
+      for (let i = 0; i < 150; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: Math.random() * 2,
+          alpha: Math.random() * 0.8 + 0.2
+        });
+      }
+    }
+    createStars();
+
+    // --- CONTROLES Y ENTRADA ---
+    window.addEventListener('mousemove', (e) => {
+      const dx = e.clientX - centerX;
+      const dy = e.clientY - centerY;
+      mouseAngle = Math.atan2(dy, dx);
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'BUTTON') isMouseDown = true;
+    });
+    window.addEventListener('mouseup', () => isMouseDown = false);
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        const dx = e.touches[0].clientX - centerX;
+        const dy = e.touches[0].clientY - centerY;
+        mouseAngle = Math.atan2(dy, dx);
+      }
+    });
+    window.addEventListener('touchstart', (e) => {
+      if (e.target.tagName !== 'BUTTON') isMouseDown = true;
+    });
+    window.addEventListener('touchend', () => isMouseDown = false);
+
+    // Activar Mega Láser con la tecla Espacio
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') triggerMegaLaser();
+    });
+
+    // --- SISTEMA DE TIENDA Y MEJORAS ---
+    function updateShopUI() {
+      document.getElementById('credits-text').innerText = credits + ' cr';
+      document.getElementById('score-text').innerText = score;
+      document.getElementById('health-text').innerText = planetShield > 0 ? `${planetHealth}% (+${planetShield} 🛡️)` : `${planetHealth}%`;
+      document.getElementById('wave-text').innerText = wave;
+
+      // Botón Torreta
+      const buyTurretBtn = document.getElementById('buy-turret-btn');
+      const turretCost = turretCount * 250;
+      document.getElementById('turret-cost').innerText = turretCount >= 4 ? 'MÁXIMO' : `${turretCost} cr`;
+      buyTurretBtn.disabled = credits < turretCost || turretCount >= 4;
+
+      // Botón Escudo
+      const buyShieldBtn = document.getElementById('buy-shield-btn');
+      buyShieldBtn.disabled = credits < 200 || planetShield >= 50;
+
+      // Botón Cadencia
+      const buyFirerateBtn = document.getElementById('buy-firerate-btn');
+      const firerateCost = 150 + (12 - fireRateDelay) * 50;
+      document.getElementById('firerate-cost').innerText = fireRateDelay <= 5 ? 'MÁXIMO' : `${firerateCost} cr`;
+      buyFirerateBtn.disabled = credits < firerateCost || fireRateDelay <= 5;
+    }
+
+    document.getElementById('buy-turret-btn').addEventListener('click', () => {
+      const cost = turretCount * 250;
+      if (credits >= cost && turretCount < 4) {
+        credits -= cost;
+        turretCount++;
+        playSound('buy');
+        updateShopUI();
+      }
+    });
+
+    document.getElementById('buy-shield-btn').addEventListener('click', () => {
+      if (credits >= 200) {
+        credits -= 200;
+        planetShield = Math.min(planetShield + 30, 60);
+        playSound('buy');
+        updateShopUI();
+      }
+    });
+
+    document.getElementById('buy-firerate-btn').addEventListener('click', () => {
+      const cost = 150 + (12 - fireRateDelay) * 50;
+      if (credits >= cost && fireRateDelay > 5) {
+        credits -= cost;
+        fireRateDelay -= 2;
+        playSound('buy');
+        updateShopUI();
+      }
+    });
+
+    function triggerMegaLaser() {
+      if (laserCooldown >= maxLaserCooldown && gameState === 'PLAYING') {
+        laserActiveTime = 150; // 2.5 segundos activo
+        laserCooldown = 0;
+      }
+    }
+    document.getElementById('laser-btn').addEventListener('click', triggerMegaLaser);
+
+    // --- ACCIONES DE DISPARO Y ENEMIGOS ---
+    function fireBullets() {
+      for (let i = 0; i < turretCount; i++) {
+        const angle = mouseAngle + (i * (Math.PI * 2 / turretCount));
+        const startX = centerX + Math.cos(angle) * orbitRadius;
+        const startY = centerY + Math.sin(angle) * orbitRadius;
+
+        bullets.push({
+          x: startX,
+          y: startY,
+          vx: Math.cos(angle) * 13,
+          vy: Math.sin(angle) * 13,
+          life: 60
+        });
+      }
+      playSound('laser');
+    }
+
+    function spawnEnemy() {
+      const angle = Math.random() * Math.PI * 2;
+      const spawnDistance = Math.max(width, height) / 1.5;
+      const spawnX = centerX + Math.cos(angle) * spawnDistance;
+      const spawnY = centerY + Math.sin(angle) * spawnDistance;
+
+      const dirAngle = Math.atan2(centerY - spawnY, centerX - spawnX);
+      const speed = 1.2 + Math.random() * 0.8 + (wave * 0.15);
+      const isMeteor = Math.random() > 0.35;
+
+      enemies.push({
+        x: spawnX,
+        y: spawnY,
+        vx: Math.cos(dirAngle) * speed,
+        vy: Math.sin(dirAngle) * speed,
+        radius: isMeteor ? 14 : 10,
+        hp: isMeteor ? 2 : 1,
+        type: isMeteor ? 'METEOR' : 'SHIP',
+        color: isMeteor ? '#e2e8f0' : '#ff0055'
+      });
+    }
+
+    function createExplosion(x, y, color, count = 12) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 4 + 1;
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: Math.random() * 3 + 1,
+          color: color, alpha: 1,
+          decay: Math.random() * 0.03 + 0.02
+        });
+      }
+    }
+
+    // --- BUCLE PRINCIPAL (UPDATE) ---
+    function update() {
+      if (gameState !== 'PLAYING') return;
+
+      // Recarga de Habilidad Láser
+      if (laserCooldown < maxLaserCooldown) {
+        laserCooldown++;
+        const percent = (laserCooldown / maxLaserCooldown) * 100;
+        document.getElementById('laser-bar').style.width = percent + '%';
+
+        if (laserCooldown >= maxLaserCooldown) {
+          const btn = document.getElementById('laser-btn');
+          btn.disabled = false;
+          btn.classList.add('ready');
+          document.getElementById('laser-status').innerText = '¡LISTO! (ESPACIO)';
+        } else {
+          const btn = document.getElementById('laser-btn');
+          btn.disabled = true;
+          btn.classList.remove('ready');
+          document.getElementById('laser-status').innerText = `${Math.ceil((maxLaserCooldown - laserCooldown)/60)}s`;
+        }
+      }
+
+      // Disparo Normal
+      if (isMouseDown && fireCooldown <= 0) {
+        fireBullets();
+        fireCooldown = fireRateDelay;
+      }
+      if (fireCooldown > 0) fireCooldown--;
+
+      // Generación de Enemigos
+      spawnTimer++;
+      if (spawnTimer > Math.max(18, 75 - wave * 5)) {
+        spawnEnemy();
+        spawnTimer = 0;
+      }
+
+      // Disparo del Mega Láser
+      if (laserActiveTime > 0) {
+        laserActiveTime--;
+        if (laserActiveTime % 4 === 0) playSound('megalaser');
+      }
+
+      // Actualizar Proyectiles
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life--;
+        if (b.life <= 0 || b.x < 0 || b.x > width || b.y < 0 || b.y > height) {
+          bullets.splice(i, 1);
+        }
+      }
+
+      // Actualizar Enemigos y Colisiones
+      for (let eIndex = enemies.length - 1; eIndex >= 0; eIndex--) {
+        const e = enemies[eIndex];
+        e.x += e.vx;
+        e.y += e.vy;
+
+        // Colisión con Mega Láser
+        if (laserActiveTime > 0) {
+          for (let i = 0; i < turretCount; i++) {
+            const angle = mouseAngle + (i * (Math.PI * 2 / turretCount));
+            const tX = centerX + Math.cos(angle) * orbitRadius;
+            const tY = centerY + Math.sin(angle) * orbitRadius;
+
+            // Distancia del enemigo a la línea del rayo láser
+            const rayVx = Math.cos(angle);
+            const rayVy = Math.sin(angle);
+            const vX = e.x - tX;
+            const vY = e.y - tY;
+            const proj = vX * rayVx + vY * rayVy;
+
+            if (proj > 0) {
+              const closeX = tX + rayVx * proj;
+              const closeY = tY + rayVy * proj;
+              const distToLaser = Math.hypot(e.x - closeX, e.y - closeY);
+
+              if (distToLaser < e.radius + 18) {
+                createExplosion(e.x, e.y, '#ff0055', 18);
+                score += e.type === 'METEOR' ? 100 : 150;
+                credits += e.type === 'METEOR' ? 25 : 15;
+                enemies.splice(eIndex, 1);
+                updateShopUI();
+                break;
+              }
+            }
+          }
+        }
+
+        if (!enemies[eIndex]) continue;
+
+        // Colisión con Proyectiles Normales
+        for (let bIndex = bullets.length - 1; bIndex >= 0; bIndex--) {
+          const b = bullets[bIndex];
+          const dist = Math.hypot(e.x - b.x, e.y - b.y);
+
+          if (dist < e.radius + 4) {
+            e.hp--;
+            bullets.splice(bIndex, 1);
+            createExplosion(b.x, b.y, '#00f2fe', 5);
+
+            if (e.hp <= 0) {
+              score += e.type === 'METEOR' ? 100 : 150;
+              credits += e.type === 'METEOR' ? 25 : 15;
+              createExplosion(e.x, e.y, e.color, 15);
+              playSound('explosion');
+              enemies.splice(eIndex, 1);
+
+              wave = Math.floor(score / 1000) + 1;
+              updateShopUI();
+            }
+            break;
+          }
+        }
+
+        if (!enemies[eIndex]) continue;
+
+        // Colisión con el Planeta / Escudo
+        const distPlanet = Math.hypot(e.x - centerX, e.y - centerY);
+        if (distPlanet < e.radius + planetRadius) {
+          const damage = e.type === 'METEOR' ? 15 : 10;
+
+          if (planetShield > 0) {
+            planetShield -= damage;
+            if (planetShield < 0) {
+              planetHealth += planetShield; // Excedente al planeta
+              planetShield = 0;
+            }
+          } else {
+            planetHealth -= damage;
+          }
+
+          if (planetHealth < 0) planetHealth = 0;
+          createExplosion(e.x, e.y, '#ff0055', 25);
+          playSound('hit');
+          enemies.splice(eIndex, 1);
+          updateShopUI();
+
+          if (planetHealth <= 0) gameOver();
+        }
+      }
+
+      // Actualizar Partículas
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.alpha -= p.decay;
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+    }
+
+    // --- RENDERIZADO VISUAL (DRAW) ---
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Fondo Estrellado
+      stars.forEach(s => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+        ctx.fillRect(s.x, s.y, s.size, s.size);
+      });
+
+      // Órbita
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 242, 254, 0.15)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Dibujar Escudo del Planeta (Si está activo)
+      if (planetShield > 0) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, planetRadius + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 242, 254, ${0.4 + (planetShield / 100)})`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#00f2fe';
+        ctx.shadowBlur = 15;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // Planeta
+      const gradient = ctx.createRadialGradient(centerX - 10, centerY - 10, 5, centerX, centerY, planetRadius);
+      gradient.addColorStop(0, '#4facfe');
+      gradient.addColorStop(1, '#002244');
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, planetRadius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.shadowColor = '#00f2fe';
+      ctx.shadowBlur = 20;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Torretas y Rayo Láser Especial
+      for (let i = 0; i < turretCount; i++) {
+        const angle = mouseAngle + (i * (Math.PI * 2 / turretCount));
+        const tX = centerX + Math.cos(angle) * orbitRadius;
+        const tY = centerY + Math.sin(angle) * orbitRadius;
+
+        // Render del Mega Láser
+        if (laserActiveTime > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(tX, tY);
+          ctx.lineTo(tX + Math.cos(angle) * 1500, tY + Math.sin(angle) * 1500);
+          ctx.strokeStyle = '#ff0055';
+          ctx.lineWidth = 14 + Math.random() * 6;
+          ctx.shadowColor = '#ff0055';
+          ctx.shadowBlur = 25;
+          ctx.stroke();
+
+          // Núcleo Blanco del Láser
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Render de la Torreta
+        ctx.save();
+        ctx.translate(tX, tY);
+        ctx.rotate(angle);
+        ctx.fillStyle = '#00f2fe';
+        ctx.shadowColor = '#00f2fe';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(-8, -8, 16, 16);
+        ctx.fillRect(0, -3, 14, 6);
+        ctx.restore();
+      }
+
+      // Proyectiles Normales
+      bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#00f2fe';
+        ctx.shadowColor = '#00f2fe';
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // Enemigos
+      enemies.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+        ctx.fillStyle = e.color;
+        ctx.shadowColor = e.color;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // Partículas
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+      });
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // --- GESTIÓN DE PARTIDA ---
+    function startGame() {
+      score = 0;
+      credits = 0;
+      planetHealth = 100;
+      planetShield = 0;
+      wave = 1;
+      turretCount = 2;
+      fireRateDelay = 12;
+      laserCooldown = 0;
+      laserActiveTime = 0;
+
+      bullets = [];
+      enemies = [];
+      particles = [];
+
+      updateShopUI();
+
+      document.getElementById('start-overlay').classList.add('hidden');
+      document.getElementById('gameover-overlay').classList.add('hidden');
+
+      gameState = 'PLAYING';
+    }
+
+    function gameOver() {
+      gameState = 'GAMEOVER';
+      document.getElementById('final-stats').innerText = `Puntaje final: ${score} | Créditos reunidos: ${credits} | Oleada alcanzada: ${wave}`;
+      document.getElementById('gameover-overlay').classList.remove('hidden');
+    }
+
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('restart-btn').addEventListener('click', startGame);
+
+    loop();
+  </script>
+</body>
+</html>

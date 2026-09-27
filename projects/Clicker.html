@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Energy Core: Quantum Clicker</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background-color: #050814;
+      color: #cbd5e1;
+      font-family: 'Share Tech Mono', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+      overflow-x: hidden;
+      touch-action: manipulation;
+    }
+
+    #particleCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .game-container {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.15);
+      text-align: center;
+      position: relative;
+      z-index: 10;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: #38bdf8;
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+      margin-bottom: 2px;
+    }
+
+    .phase-tag {
+      font-size: 0.75rem;
+      color: #f59e0b;
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .stats-box {
+      background: rgba(5, 8, 20, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .score {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #38bdf8;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    .sub-stats {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    /* Contenedor del Núcleo */
+    .core-wrapper { position: relative; margin: 20px auto; width: 140px; height: 140px; }
+    
+    /* Estilos Base del Botón */
+    .click-btn {
+      width: 100%; height: 100%; border-radius: 50%;
+      color: white; font-weight: bold; cursor: pointer;
+      transition: transform 0.05s, box-shadow 0.2s, background 0.4s, border-color 0.4s;
+      outline: none;
+      touch-action: none;
+      border: 3px solid;
+    }
+
+    /* FASES DEL NÚCLEO */
+    .click-btn.phase-1 {
+      border-color: #38bdf8;
+      background: radial-gradient(circle, #0284c7 0%, #0369a1 70%, #0c4a6e 100%);
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+    }
+    .click-btn.phase-2 {
+      border-color: #f87171;
+      background: radial-gradient(circle, #ef4444 0%, #b91c1c 70%, #450a0a 100%);
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.7), inset 0 0 15px #fca5a5;
+    }
+    .click-btn.phase-3 {
+      border-color: #fde047;
+      background: radial-gradient(circle, #eab308 0%, #ca8a04 70%, #713f12 100%);
+      box-shadow: 0 0 35px rgba(234, 179, 8, 0.8), inset 0 0 18px #fef08a;
+    }
+    .click-btn.phase-4 {
+      border-color: #c084fc;
+      background: radial-gradient(circle, #a855f7 0%, #7e22ce 70%, #3b0764 100%);
+      box-shadow: 0 0 40px rgba(168, 85, 247, 0.9), inset 0 0 20px #e9d5ff;
+    }
+
+    .click-btn:active, .click-btn.holding {
+      transform: scale(0.92);
+    }
+
+    /* METEORO / EVENTO ALEATORIO */
+    .meteor-event {
+      position: fixed;
+      width: 55px; height: 55px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fef08a 0%, #f59e0b 60%, #b45309 100%);
+      border: 2px solid #fde047;
+      box-shadow: 0 0 20px #f59e0b, 0 0 40px #fef08a;
+      cursor: pointer;
+      z-index: 99;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      animation: meteorPulse 0.8s infinite alternate, floatSlow 3s ease-in-out infinite;
+    }
+    @keyframes meteorPulse {
+      from { transform: scale(1); box-shadow: 0 0 15px #f59e0b; }
+      to { transform: scale(1.15); box-shadow: 0 0 30px #fef08a; }
+    }
+    @keyframes floatSlow {
+      0%, 100% { translateY(0px); }
+      50% { translateY(-8px); }
+    }
+
+    /* Pestañas */
+    .tabs { display: flex; gap: 8px; margin-top: 15px; margin-bottom: 12px; }
+    .tab-btn {
+      flex: 1; padding: 8px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);
+      background: rgba(30, 41, 59, 0.5); color: #94a3b8;
+      font-family: 'Share Tech Mono', monospace; cursor: pointer; transition: 0.2s;
+    }
+    .tab-btn.active {
+      background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: #38bdf8;
+    }
+
+    .panel-content { display: none; text-align: left; max-height: 220px; overflow-y: auto; padding-right: 4px; }
+    .panel-content.active { display: block; }
+    .panel-content::-webkit-scrollbar { width: 4px; }
+    .panel-content::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 4px; }
+
+    /* Ítems Tienda */
+    .item-btn {
+      width: 100%; background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08); padding: 10px 12px; border-radius: 8px;
+      color: white; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: 0.2s;
+    }
+    .item-btn:hover:not(:disabled) { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; }
+    .item-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .item-info div:first-child { font-weight: bold; font-size: 0.85rem; color: #f1f5f9; }
+    .item-info div:last-child { font-size: 0.72rem; color: #94a3b8; }
+    .item-cost { background: #0f172a; padding: 5px 8px; border-radius: 6px; font-weight: bold; color: #38bdf8; font-size: 0.8rem; }
+
+    /* Tarjetas de Logros y Reclamar */
+    .achievement-card {
+      background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; display: flex; align-items: center;
+      justify-content: space-between; gap: 8px; opacity: 0.4; transition: 0.3s;
+    }
+    .achievement-card.unlocked { opacity: 0.85; border-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+    .achievement-card.claimed { opacity: 1; border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+    .achievement-main { display: flex; align-items: center; gap: 10px; }
+    .achievement-icon { font-size: 1.3rem; }
+    .achievement-text div:first-child { font-size: 0.82rem; font-weight: bold; color: #f1f5f9; }
+    .achievement-text div:last-child { font-size: 0.7rem; color: #94a3b8; }
+    
+    .btn-claim {
+      background: #f59e0b; border: none; padding: 6px 10px; border-radius: 6px;
+      color: #050814; font-weight: bold; font-size: 0.72rem; cursor: pointer;
+      font-family: 'Share Tech Mono', monospace; transition: 0.2s;
+    }
+    .btn-claim:hover { background: #fbbf24; transform: scale(1.05); }
+
+    .footer-tools {
+      display: flex; justify-content: center; align-items: center;
+      margin-top: 15px; font-size: 0.72rem; color: #64748b;
+    }
+
+    /* Notificaciones Toast */
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #f59e0b; color: #f1f5f9; padding: 12px 16px; border-radius: 10px;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); z-index: 100;
+      animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 2.5s forwards;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+
+    /* Texto Flotante */
+    .floating-text {
+      position: absolute; color: #38bdf8; font-family: 'Orbitron', sans-serif;
+      font-weight: bold; font-size: 1.2rem; pointer-events: none; z-index: 20;
+      animation: floatUp 0.7s ease-out forwards;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="particleCanvas"></canvas>
+
+  <div class="game-container">
+    <h1>⚡ ENERGY CORE</h1>
+    <div class="phase-tag" id="corePhaseLabel">FASE 1: NÚCLEO CUÁNTICO</div>
+
+    <div class="stats-box">
+      <div class="score" id="score">0</div>
+      <div class="sub-stats">
+        <span>Por Clic: <b id="statClick" style="color:#38bdf8">1</b></span>
+        <span>Pasivo/seg: <b id="statCps" style="color:#38bdf8">0</b></span>
+        <span>Carga Continuada: <b id="statHoldSpeed" style="color:#a855f7">0/s</b></span>
+        <span>Mult. Global: <b id="statMult" style="color:#f59e0b">x1.0</b></span>
+      </div>
+    </div>
+
+    <div class="core-wrapper">
+      <button class="click-btn phase-1" id="coreBtn">PULSACIÓN</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tabShop">🛒 Tienda</button>
+      <button class="tab-btn" id="tabAchievements">🏆 Logros (<span id="achCount">0/6</span>)</button>
+    </div>
+
+    <!-- Tienda -->
+    <div class="panel-content active" id="panelShop">
+      <button class="item-btn" id="btnBuyClick" disabled>
+        <div class="item-info">
+          <div>Sobre-Consola (Clic +1)</div>
+          <div id="lvlClick">Nivel: 0</div>
+        </div>
+        <div class="item-cost" id="costClick">15 ⚡</div>
+      </button>
+
+      <button class="item-btn" id="btnBuyHold" disabled>
+        <div class="item-info">
+          <div>Carga Continua (Autoclic al mantener)</div>
+          <div id="lvlHold">Nivel: 0</div>
+        </div>
+        <div class="item-cost" id="costHold">100 ⚡</div>
+      </button>
+
+      <button class="item-btn" id="btnBuyBot" disabled>
+        <div class="item-info">
+          <div>Bot Solar (+1 pasivo/s)</div>
+          <div id="lvlBot">Nivel: 0</div>
+        </div>
+        <div class="item-cost" id="costBot">50 ⚡</div>
+      </button>
+
+      <button class="item-btn" id="btnBuyReactor" disabled>
+        <div class="item-info">
+          <div>Reactor de Fusión (+12 pasivo/s)</div>
+          <div id="lvlReactor">Nivel: 0</div>
+        </div>
+        <div class="item-cost" id="costReactor">350 ⚡</div>
+      </button>
+
+      <button class="item-btn" id="btnBuyMulti" disabled>
+        <div class="item-info">
+          <div>Sobrecarga Cuántica (Mult. +20%)</div>
+          <div id="lvlMulti">Nivel: 0</div>
+        </div>
+        <div class="item-cost" id="costMulti">1,000 ⚡</div>
+      </button>
+    </div>
+
+    <!-- Logros -->
+    <div class="panel-content" id="panelAchievements">
+      <div id="achievementsList"></div>
+    </div>
+
+    <div class="footer-tools">
+      <span id="saveStatus">Autoguardado activo</span>
+    </div>
+  </div>
+
+  <script>
+    // --- ESTADO DEL JUEGO ---
+    let state = {
+      energy: 0,
+      totalEarned: 0,
+      clickPower: 1,
+      baseCps: 0,
+      globalMult: 1.0,
+      
+      clickLvl: 0, clickCost: 15,
+      holdLvl: 0, holdCost: 100,
+      botLvl: 0, botCost: 50,
+      reactorLvl: 0, reactorCost: 350,
+      multiLvl: 0, multiCost: 1000,
+
+      unlockedAchievements: [],
+      claimedAchievements: []
+    };
+
+    const achievements = [
+      { id: 'first_click', icon: '⚡', title: 'Primera Chispa', desc: 'Haz tu primer clic.', reward: 50 },
+      { id: 'hold_unlock', icon: '🖐️', title: 'Carga Inductiva', desc: 'Desbloquea Carga Continua.', reward: 200 },
+      { id: 'energy_100', icon: '🔋', title: 'Acumulador', desc: 'Acumula 100 de energía.', reward: 150 },
+      { id: 'phase_2', icon: '🔥', title: 'Fuerza Rubí', desc: 'Alcanza la Fase 2 (1,000 ⚡ totales).', reward: 500 },
+      { id: 'automation', icon: '🤖', title: 'Automatización', desc: 'Compra tu primer Bot Solar.', reward: 300 },
+      { id: 'energy_10000', icon: '🌌', title: 'Magnate Cuántico', desc: 'Acumula 10,000 ⚡ totales.', reward: 2500 }
+    ];
+
+    function getHoldInterval() {
+      if (state.holdLvl === 0) return 0;
+      if (state.holdLvl === 1) return 2500;
+      if (state.holdLvl === 2) return 1200;
+      if (state.holdLvl === 3) return 600;
+      if (state.holdLvl === 4) return 300;
+      if (state.holdLvl === 5) return 150;
+      return Math.max(50, 150 - (state.holdLvl - 5) * 15);
+    }
+
+    function getHoldSpeedText() {
+      if (state.holdLvl === 0) return "Bloqueado";
+      let interval = getHoldInterval();
+      return `${(1000 / interval).toFixed(1)}/seg`;
+    }
+
+    // --- SINTETIZADOR DE SONIDO ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+          osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+        } else if (type === 'buy') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+          osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        } else if (type === 'achieve') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+          osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        }
+      } catch(e) {}
+    }
+
+    // --- CANVAS DE PARTÍCULAS ---
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function spawnParticles(x, y, customColor) {
+      for (let i = 0; i < 7; i++) {
+        particles.push({
+          x: x, y: y,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6 - 2,
+          radius: Math.random() * 3.5 + 2,
+          alpha: 1,
+          color: customColor || (Math.random() > 0.3 ? '#38bdf8' : '#f59e0b')
+        });
+      }
+    }
+
+    function renderParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.alpha -= 0.03;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fill();
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(renderParticles);
+    }
+    renderParticles();
+
+    // --- ELEMENTOS Y FASES DEL NÚCLEO ---
+    const scoreEl = document.getElementById('score');
+    const statClickEl = document.getElementById('statClick');
+    const statCpsEl = document.getElementById('statCps');
+    const statHoldSpeedEl = document.getElementById('statHoldSpeed');
+    const statMultEl = document.getElementById('statMult');
+    const coreBtn = document.getElementById('coreBtn');
+    const corePhaseLabel = document.getElementById('corePhaseLabel');
+
+    function updateCorePhase() {
+      const total = state.totalEarned;
+      let phase = 1;
+      let phaseName = "NÚCLEO CUÁNTICO";
+      let pColor = "#38bdf8";
+
+      if (total >= 25000) {
+        phase = 4;
+        phaseName = "NÚCLEO ABISAL VIOLETA";
+        pColor = "#c084fc";
+      } else if (total >= 5000) {
+        phase = 3;
+        phaseName = "NÚCLEO SOLAR DORADO";
+        pColor = "#fde047";
+      } else if (total >= 1000) {
+        phase = 2;
+        phaseName = "NÚCLEO RUBÍ VOLCÁNICO";
+        pColor = "#f87171";
+      }
+
+      coreBtn.className = `click-btn phase-${phase} ${coreBtn.classList.contains('holding') ? 'holding' : ''}`;
+      corePhaseLabel.innerText = `FASE ${phase}: ${phaseName}`;
+      corePhaseLabel.style.color = pColor;
+      return pColor;
+    }
+
+    // --- EVENTOS ALEATORIOS (METEORO) ---
+    function trySpawnMeteor() {
+      if (document.querySelector('.meteor-event')) return; // Máximo 1 a la vez
+      if (Math.random() < 0.45) { // 45% de probabilidad
+        const meteor = document.createElement('div');
+        meteor.className = 'meteor-event';
+        meteor.innerHTML = '☄️';
+
+        const padding = 70;
+        const x = Math.floor(Math.random() * (window.innerWidth - padding * 2)) + padding;
+        const y = Math.floor(Math.random() * (window.innerHeight - padding * 2)) + padding;
+
+        meteor.style.left = `${x}px`;
+        meteor.style.top = `${y}px`;
+
+        meteor.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          initAudio();
+          
+          let bonus = Math.max(60, Math.floor((state.clickPower * state.globalMult * 15) + (state.baseCps * 10)));
+          state.energy += bonus;
+          state.totalEarned += bonus;
+
+          playSound('achieve');
+          spawnParticles(e.clientX, e.clientY, '#fde047');
+          createFloatingText(e.clientX, e.clientY, `¡METEORO! +${bonus} ⚡`);
+          showToast(`☄️ ¡Capturaste un Meteoro Cósmico! +${bonus} ⚡`);
+
+          meteor.remove();
+          checkAchievements();
+          updateUI();
+        });
+
+        document.body.appendChild(meteor);
+
+        // Desaparece en 6.5 segundos si no se toca
+        setTimeout(() => {
+          if (meteor.parentNode) meteor.remove();
+        }, 6500);
+      }
+    }
+    setInterval(trySpawnMeteor, 12000); // Intenta cada 12s
+
+    // --- LÓGICA DE CLIC ---
+    let holdTimer = null;
+    let lastPointerPos = { x: 0, y: 0 };
+
+    function triggerClick(x, y) {
+      initAudio();
+      let gained = state.clickPower * state.globalMult;
+      state.energy += gained;
+      state.totalEarned += gained;
+      
+      let pColor = updateCorePhase();
+      playSound('click');
+      spawnParticles(x, y, pColor);
+      createFloatingText(x, y, `+${gained.toFixed(0)}`);
+      
+      checkAchievements();
+      updateUI();
+    }
+
+    coreBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      lastPointerPos = { x: e.clientX, y: e.clientY };
+      coreBtn.classList.add('holding');
+      
+      triggerClick(e.clientX, e.clientY);
+
+      if (state.holdLvl > 0) {
+        clearInterval(holdTimer);
+        holdTimer = setInterval(() => {
+          triggerClick(lastPointerPos.x, lastPointerPos.y);
+        }, getHoldInterval());
+      }
+    });
+
+    function stopHold() {
+      coreBtn.classList.remove('holding');
+      if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
+    }
+
+    coreBtn.addEventListener('pointerup', stopHold);
+    coreBtn.addEventListener('pointerleave', stopHold);
+    coreBtn.addEventListener('pointercancel', stopHold);
+    coreBtn.addEventListener('pointermove', (e) => { lastPointerPos = { x: e.clientX, y: e.clientY }; });
+
+    // --- TIENDA ---
+    function setupShopButton(btnId, costKey, lvlKey, buyCallback) {
+      document.getElementById(btnId).addEventListener('click', () => {
+        initAudio();
+        if (state.energy >= state[costKey]) {
+          state.energy -= state[costKey];
+          state[lvlKey]++;
+          state[costKey] = Math.floor(state[costKey] * 1.6);
+          buyCallback();
+          playSound('buy');
+          checkAchievements();
+          updateUI();
+        }
+      });
+    }
+
+    setupShopButton('btnBuyClick', 'clickCost', 'clickLvl', () => { state.clickPower += 1; });
+    setupShopButton('btnBuyHold', 'holdCost', 'holdLvl', () => {});
+    setupShopButton('btnBuyBot', 'botCost', 'botLvl', () => { state.baseCps += 1; });
+    setupShopButton('btnBuyReactor', 'reactorCost', 'reactorLvl', () => { state.baseCps += 12; });
+    setupShopButton('btnBuyMulti', 'multiCost', 'multiLvl', () => { state.globalMult = +(state.globalMult + 0.2).toFixed(1); });
+
+    // --- BUCLE PASIVO ---
+    setInterval(() => {
+      if (state.baseCps > 0) {
+        let gained = (state.baseCps * state.globalMult) / 10;
+        state.energy += gained;
+        state.totalEarned += gained;
+        checkAchievements();
+        updateUI();
+      }
+    }, 100);
+
+    // --- LOGROS Y RECOMPENSAS ---
+    function checkAchievements() {
+      let earnedAny = false;
+      achievements.forEach(ach => {
+        if (!state.unlockedAchievements.includes(ach.id)) {
+          let unlocked = false;
+          if (ach.id === 'first_click' && state.totalEarned > 0) unlocked = true;
+          if (ach.id === 'hold_unlock' && state.holdLvl >= 1) unlocked = true;
+          if (ach.id === 'energy_100' && state.totalEarned >= 100) unlocked = true;
+          if (ach.id === 'phase_2' && state.totalEarned >= 1000) unlocked = true;
+          if (ach.id === 'automation' && state.botLvl >= 1) unlocked = true;
+          if (ach.id === 'energy_10000' && state.totalEarned >= 10000) unlocked = true;
+
+          if (unlocked) {
+            state.unlockedAchievements.push(ach.id);
+            showToast(`🏆 ¡Logro Desbloqueado: ${ach.title}!`);
+            playSound('achieve');
+            earnedAny = true;
+          }
+        }
+      });
+      if (earnedAny) renderAchievementsList();
+    }
+
+    function claimAchievementReward(achId) {
+      const ach = achievements.find(a => a.id === achId);
+      if (ach && state.unlockedAchievements.includes(achId) && !state.claimedAchievements.includes(achId)) {
+        initAudio();
+        state.claimedAchievements.push(achId);
+        state.energy += ach.reward;
+        state.totalEarned += ach.reward;
+        playSound('achieve');
+        showToast(`🎁 ¡Recompensa reclamada: +${ach.reward} ⚡!`);
+        renderAchievementsList();
+        updateUI();
+      }
+    }
+
+    function renderAchievementsList() {
+      const container = document.getElementById('achievementsList');
+      container.innerHTML = '';
+      let unlockedCount = 0;
+
+      achievements.forEach(ach => {
+        let isUnlocked = state.unlockedAchievements.includes(ach.id);
+        let isClaimed = state.claimedAchievements.includes(ach.id);
+        if (isUnlocked) unlockedCount++;
+
+        const card = document.createElement('div');
+        card.className = `achievement-card ${isClaimed ? 'claimed' : (isUnlocked ? 'unlocked' : '')}`;
+        
+        let actionBtnHTML = '';
+        if (isUnlocked && !isClaimed) {
+          actionBtnHTML = `<button class="btn-claim" onclick="claimAchievementReward('${ach.id}')">+${ach.reward} ⚡</button>`;
+        } else if (isClaimed) {
+          actionBtnHTML = `<span style="color:#10b981; font-weight:bold; font-size:0.72rem;">✓ Reclamado</span>`;
+        } else {
+          actionBtnHTML = `<span style="color:#64748b; font-size:0.72rem;">🔒 ${ach.reward} ⚡</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="achievement-main">
+            <div class="achievement-icon">${ach.icon}</div>
+            <div class="achievement-text">
+              <div>${ach.title}</div>
+              <div>${ach.desc}</div>
+            </div>
+          </div>
+          <div>${actionBtnHTML}</div>
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById('achCount').innerText = `${unlockedCount}/${achievements.length}`;
+    }
+
+    // --- AUTOGUARDADO ---
+    function saveGame() {
+      localStorage.setItem('energy_core_save_v30', JSON.stringify(state));
+      const status = document.getElementById('saveStatus');
+      status.innerText = 'Guardado ' + new Date().toLocaleTimeString();
+      setTimeout(() => status.innerText = 'Autoguardado activo', 2000);
+    }
+
+    function loadGame() {
+      const saved = localStorage.getItem('energy_core_save_v30');
+      if (saved) {
+        try { 
+          state = { ...state, ...JSON.parse(saved) }; 
+          if (!state.totalEarned) state.totalEarned = state.energy;
+          if (!state.claimedAchievements) state.claimedAchievements = [];
+        } catch(e) {}
+      }
+      renderAchievementsList();
+      updateCorePhase();
+      updateUI();
+    }
+
+    setInterval(saveGame, 10000);
+
+    // --- NAVEGACIÓN Y AUXILIARES ---
+    document.getElementById('tabShop').addEventListener('click', (e) => switchTab('panelShop', e.target));
+    document.getElementById('tabAchievements').addEventListener('click', (e) => switchTab('panelAchievements', e.target));
+
+    function switchTab(panelId, btn) {
+      document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(panelId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function createFloatingText(x, y, text) {
+      const el = document.createElement('div');
+      el.className = 'floating-text';
+      el.innerText = text;
+      el.style.left = `${x - 15}px`;
+      el.style.top = `${y - 20}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 700);
+    }
+
+    function showToast(msg) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerText = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    function updateUI() {
+      scoreEl.innerText = Math.floor(state.energy).toLocaleString();
+      statClickEl.innerText = (state.clickPower * state.globalMult).toFixed(1);
+      statCpsEl.innerText = (state.baseCps * state.globalMult).toFixed(1);
+      statHoldSpeedEl.innerText = getHoldSpeedText();
+      statMultEl.innerText = `x${state.globalMult.toFixed(1)}`;
+
+      updateCorePhase();
+
+      const updateBtn = (btnId, costKey, lvlKey, costElId, lvlElId) => {
+        const btn = document.getElementById(btnId);
+        document.getElementById(costElId).innerText = `${state[costKey].toLocaleString()} ⚡`;
+        document.getElementById(lvlElId).innerText = `Nivel: ${state[lvlKey]}`;
+        btn.disabled = state.energy < state[costKey];
+      };
+
+      updateBtn('btnBuyClick', 'clickCost', 'clickLvl', 'costClick', 'lvlClick');
+      updateBtn('btnBuyHold', 'holdCost', 'holdLvl', 'costHold', 'lvlHold');
+      updateBtn('btnBuyBot', 'botCost', 'botLvl', 'costBot', 'lvlBot');
+      updateBtn('btnBuyReactor', 'reactorCost', 'reactorLvl', 'costReactor', 'lvlReactor');
+      updateBtn('btnBuyMulti', 'multiCost', 'multiLvl', 'costMulti', 'lvlMulti');
+    }
+
+    loadGame();
+  </script>
+</body>
+</html>
